@@ -1,0 +1,60 @@
+package com.insurance.dashboard.model;
+
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+
+@Entity
+@Table(name = "policies")
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class Policy {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotBlank
+    private String policyNumber;
+
+    @Enumerated(EnumType.STRING)
+    private PolicyType policyType;
+
+    @Positive
+    private BigDecimal premiumAmount;
+
+    @Positive
+    private BigDecimal coverageAmount;
+
+    private LocalDate startDate;
+
+    private LocalDate endDate;
+
+    @Enumerated(EnumType.STRING)
+    private PolicyStatus status;
+
+    private String region;
+
+    private String currency;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "policy_holder_id")
+    private PolicyHolder policyHolder;
+
+    public enum PolicyType {
+        LIFE, HEALTH, AUTO, HOME, TRAVEL
+    }
+
+    public enum PolicyStatus {
+        ACTIVE, INACTIVE, EXPIRED, PENDING
+    }
+}

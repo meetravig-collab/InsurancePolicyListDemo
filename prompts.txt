@@ -1,0 +1,21 @@
+Implementation Prompts - InsurancePolicyHoldersDashboard
+=========================================================
+
+1. create a spring boot project with name InsurancePolicyHolders Dashboard
+
+2. remove H2 dependency and would like to have postgresql dependency and JPA repository
+
+3. run the spring boot application
+
+4. test the API endpoints using Postman
+
+5. Basic retrieval
+   Given a logged-in user
+   When they call GET /api/policies
+   Then the response contains a paginated list of policies
+   And each policy shows: policy number, holder name, region,
+       status, premium with currency, and policy dates
+
+6. Right now Spring security is not required
+
+7. test the paginated endpoint in Postman
