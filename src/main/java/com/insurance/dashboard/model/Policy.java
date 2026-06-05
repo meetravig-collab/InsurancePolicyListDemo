@@ -56,7 +56,7 @@ public class Policy {
     }
 
     public enum PolicyStatus {
-        ACTIVE, INACTIVE, EXPIRED, PENDING
+        ACTIVE, INACTIVE, EXPIRED, PENDING, LAPSED
     }
 
     public enum Region {

@@ -27,6 +27,10 @@ public class PolicySummaryResponse {
         private String currency;
     }
 
+    private static String toTitleCase(String value) {
+        return value.substring(0, 1).toUpperCase() + value.substring(1).toLowerCase();
+    }
+
     public static PolicySummaryResponse from(Policy policy) {
         String holderName = policy.getPolicyHolder() != null
                 ? policy.getPolicyHolder().getFirstName() + " " + policy.getPolicyHolder().getLastName()
@@ -37,7 +41,7 @@ public class PolicySummaryResponse {
                 .policyNumber(policy.getPolicyNumber())
                 .holderName(holderName)
                 .region(policy.getRegion() != null ? policy.getRegion().name() : null)
-                .status(policy.getStatus() != null ? policy.getStatus().name() : null)
+                .status(policy.getStatus() != null ? toTitleCase(policy.getStatus().name()) : null)
                 .premium(PremiumDto.builder()
                         .amount(policy.getPremiumAmount())
                         .currency(policy.getCurrency() != null ? policy.getCurrency() : "USD")
