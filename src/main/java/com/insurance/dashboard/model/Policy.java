@@ -42,7 +42,8 @@ public class Policy {
     @Enumerated(EnumType.STRING)
     private PolicyStatus status;
 
-    private String region;
+    @Enumerated(EnumType.STRING)
+    private Region region;
 
     private String currency;
 
@@ -56,5 +57,9 @@ public class Policy {
 
     public enum PolicyStatus {
         ACTIVE, INACTIVE, EXPIRED, PENDING
+    }
+
+    public enum Region {
+        SINGAPORE, HONG_KONG, AUSTRALIA, INDIA, JAPAN
     }
 }

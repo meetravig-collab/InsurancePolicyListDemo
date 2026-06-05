@@ -36,7 +36,7 @@ public class PolicySummaryResponse {
                 .id(policy.getId())
                 .policyNumber(policy.getPolicyNumber())
                 .holderName(holderName)
-                .region(policy.getRegion())
+                .region(policy.getRegion() != null ? policy.getRegion().name() : null)
                 .status(policy.getStatus() != null ? policy.getStatus().name() : null)
                 .premium(PremiumDto.builder()
                         .amount(policy.getPremiumAmount())

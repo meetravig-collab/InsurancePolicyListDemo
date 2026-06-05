@@ -3,6 +3,7 @@ package com.insurance.dashboard.service;
 import com.insurance.dashboard.dto.PolicySummaryResponse;
 import com.insurance.dashboard.model.Policy;
 import com.insurance.dashboard.model.Policy.PolicyStatus;
+import com.insurance.dashboard.model.Policy.Region;
 import com.insurance.dashboard.model.PolicyHolder;
 import com.insurance.dashboard.repository.PolicyRepository;
 import lombok.RequiredArgsConstructor;
@@ -21,12 +22,8 @@ public class PolicyService {
     private final PolicyRepository policyRepository;
     private final PolicyHolderService policyHolderService;
 
-    public Page<PolicySummaryResponse> getPaginatedPolicies(PolicyStatus status, Pageable pageable) {
-        if (status != null) {
-            return policyRepository.findAllWithHolderByStatus(status, pageable)
-                    .map(PolicySummaryResponse::from);
-        }
-        return policyRepository.findAllWithHolder(pageable)
+    public Page<PolicySummaryResponse> getPaginatedPolicies(PolicyStatus status, Region region, Pageable pageable) {
+        return policyRepository.findAllWithFilters(status, region, pageable)
                 .map(PolicySummaryResponse::from);
     }
 

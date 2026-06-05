@@ -3,6 +3,7 @@ package com.insurance.dashboard.controller;
 import com.insurance.dashboard.dto.PolicySummaryResponse;
 import com.insurance.dashboard.model.Policy;
 import com.insurance.dashboard.model.Policy.PolicyStatus;
+import com.insurance.dashboard.model.Policy.Region;
 import com.insurance.dashboard.service.PolicyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -26,8 +27,9 @@ public class PolicyController {
     @GetMapping
     public ResponseEntity<Page<PolicySummaryResponse>> getAllPolicies(
             @RequestParam(required = false) PolicyStatus status,
+            @RequestParam(required = false) Region region,
             @PageableDefault(size = 10, sort = "startDate", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ResponseEntity.ok(policyService.getPaginatedPolicies(status, pageable));
+        return ResponseEntity.ok(policyService.getPaginatedPolicies(status, region, pageable));
     }
 
     @GetMapping("/{id}")
