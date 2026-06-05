@@ -1,5 +1,6 @@
 package com.insurance.dashboard.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.insurance.dashboard.model.Policy;
 import lombok.Builder;
 import lombok.Data;
@@ -19,12 +20,20 @@ public class PolicySummaryResponse {
     private PremiumDto premium;
     private LocalDate startDate;
     private LocalDate endDate;
+    @JsonProperty("isExpiringSoon")
+    private boolean isExpiringSoon;
 
     @Data
     @Builder
     public static class PremiumDto {
         private BigDecimal amount;
         private String currency;
+    }
+
+    private static boolean isExpiringSoon(LocalDate endDate) {
+        if (endDate == null) return false;
+        LocalDate today = LocalDate.now();
+        return !endDate.isBefore(today) && endDate.isBefore(today.plusDays(30));
     }
 
     private static String toTitleCase(String value) {
@@ -48,6 +57,7 @@ public class PolicySummaryResponse {
                         .build())
                 .startDate(policy.getStartDate())
                 .endDate(policy.getEndDate())
+                .isExpiringSoon(isExpiringSoon(policy.getEndDate()))
                 .build();
     }
 }
