@@ -60,6 +60,20 @@ public class Policy {
     }
 
     public enum Region {
-        SINGAPORE, HONG_KONG, AUSTRALIA, INDIA, JAPAN
+        SINGAPORE("Singapore"),
+        HONG_KONG("Hong Kong"),
+        AUSTRALIA("Australia"),
+        INDIA("India"),
+        JAPAN("Japan");
+
+        private final String displayName;
+
+        Region(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
     }
 }
