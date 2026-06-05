@@ -30,6 +30,7 @@ public class PolicySummaryResponse {
         private String currency;
     }
 
+    // 30-day window is hardcoded for now; per-region configurability tracked in APAC-2967
     private static boolean isExpiringSoon(LocalDate endDate) {
         if (endDate == null) return false;
         LocalDate today = LocalDate.now();
