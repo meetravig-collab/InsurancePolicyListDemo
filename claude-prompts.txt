@@ -1,0 +1,31 @@
+Claude Prompts — InsurancePolicyHoldersDashboard
+=================================================
+
+1. Create a Spring Boot project with PostgreSQL, JPA, Lombok. Include
+   PolicyHolder and Policy entities with CRUD REST endpoints and
+   a global exception handler.
+
+2. Replace H2 with PostgreSQL. Configure application.properties for
+   a local database named insuranceDB.
+
+3. Add a paginated GET /api/policies endpoint returning policy number,
+   holder name, region, status, premium with currency, and policy dates.
+   Support optional ?status and ?region filters.
+
+4. Enforce APAC regions as an enum (SINGAPORE, HONG_KONG, AUSTRALIA,
+   INDIA, JAPAN). Return friendly display names e.g. HONG_KONG → "Hong Kong".
+
+5. Format policy status as title case: ACTIVE → "Active", LAPSED → "Lapsed".
+   Add LAPSED to the PolicyStatus enum.
+
+6. Add isExpiringSoon boolean to the response — true when end date is
+   within 30 days from today and not yet expired.
+
+7. Return 503 with a readable message when the database is unreachable.
+   Do not expose stack traces.
+
+8. Write a k6 load test for GET /api/policies — 50 VUs, 30s,
+   p95 < 500ms threshold, error rate < 1%.
+
+9. Write unit tests for PolicyController and PolicyService using
+   @WebMvcTest, MockMvc, Mockito, and AssertJ.
