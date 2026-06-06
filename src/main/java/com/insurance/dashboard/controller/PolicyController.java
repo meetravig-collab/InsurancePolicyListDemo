@@ -1,7 +1,6 @@
 package com.insurance.dashboard.controller;
 
 import com.insurance.dashboard.dto.PolicySummaryResponse;
-import com.insurance.dashboard.model.Policy;
 import com.insurance.dashboard.model.Policy.PolicyStatus;
 import com.insurance.dashboard.model.Policy.Region;
 import com.insurance.dashboard.service.PolicyService;
@@ -12,8 +11,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/policies")
@@ -30,13 +27,4 @@ public class PolicyController {
         return ResponseEntity.ok(policyService.getPaginatedPolicies(status, region, pageable));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Policy> getPolicyById(@PathVariable Long id) {
-        return ResponseEntity.ok(policyService.getPolicyById(id));
-    }
-
-    @GetMapping("/holder/{holderId}")
-    public ResponseEntity<List<Policy>> getPoliciesByHolder(@PathVariable Long holderId) {
-        return ResponseEntity.ok(policyService.getPoliciesByHolder(holderId));
-    }
 }

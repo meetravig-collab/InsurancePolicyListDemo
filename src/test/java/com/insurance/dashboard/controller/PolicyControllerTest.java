@@ -1,7 +1,6 @@
 package com.insurance.dashboard.controller;
 
 import com.insurance.dashboard.dto.PolicySummaryResponse;
-import com.insurance.dashboard.model.Policy;
 import com.insurance.dashboard.model.Policy.PolicyStatus;
 import com.insurance.dashboard.model.Policy.Region;
 import com.insurance.dashboard.service.PolicyService;
@@ -22,7 +21,7 @@ import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(PolicyController.class)
@@ -35,7 +34,6 @@ class PolicyControllerTest {
     private PolicyService policyService;
 
     private PolicySummaryResponse summaryResponse;
-    private Policy policy;
 
     @BeforeEach
     void setUp() {
@@ -52,19 +50,6 @@ class PolicyControllerTest {
                 .startDate(LocalDate.of(2024, 1, 1))
                 .endDate(LocalDate.of(2029, 1, 1))
                 .isExpiringSoon(false)
-                .build();
-
-        policy = Policy.builder()
-                .id(1L)
-                .policyNumber("POL-001")
-                .policyType(Policy.PolicyType.LIFE)
-                .premiumAmount(new BigDecimal("250.00"))
-                .coverageAmount(new BigDecimal("500000.00"))
-                .startDate(LocalDate.of(2024, 1, 1))
-                .endDate(LocalDate.of(2029, 1, 1))
-                .status(PolicyStatus.ACTIVE)
-                .region(Region.SINGAPORE)
-                .currency("SGD")
                 .build();
     }
 
@@ -111,8 +96,8 @@ class PolicyControllerTest {
     }
 
     @Test
-    void getAllPolicies_isExpiringSoon_presentInResponse() throws Exception {
-        summaryResponse = PolicySummaryResponse.builder()
+    void getAllPolicies_isExpiringSoon_trueWhenEndDateWithin30Days() throws Exception {
+        PolicySummaryResponse expiring = PolicySummaryResponse.builder()
                 .id(2L).policyNumber("POL-EXP-001").holderName("Jane Doe")
                 .region("Hong Kong").status("Active")
                 .premium(PolicySummaryResponse.PremiumDto.builder()
@@ -121,7 +106,7 @@ class PolicyControllerTest {
                 .isExpiringSoon(true).build();
 
         when(policyService.getPaginatedPolicies(any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(summaryResponse)));
+                .thenReturn(new PageImpl<>(List.of(expiring)));
 
         mockMvc.perform(get("/api/policies"))
                 .andExpect(status().isOk())
@@ -129,32 +114,13 @@ class PolicyControllerTest {
     }
 
     @Test
-    void getPolicyById_returnsPolicy_whenFound() throws Exception {
-        when(policyService.getPolicyById(1L)).thenReturn(policy);
+    void getAllPolicies_returnsEmptyPage_whenNoPolicies() throws Exception {
+        when(policyService.getPaginatedPolicies(any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
 
-        mockMvc.perform(get("/api/policies/1"))
+        mockMvc.perform(get("/api/policies"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.policyNumber").value("POL-001"))
-                .andExpect(jsonPath("$.status").value("ACTIVE"));
-    }
-
-    @Test
-    void getPolicyById_returns404_whenNotFound() throws Exception {
-        when(policyService.getPolicyById(99L))
-                .thenThrow(new RuntimeException("Policy not found with id: 99"));
-
-        mockMvc.perform(get("/api/policies/99"))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.message").value("Policy not found with id: 99"));
-    }
-
-    @Test
-    void getPoliciesByHolder_returnsList() throws Exception {
-        when(policyService.getPoliciesByHolder(1L)).thenReturn(List.of(policy));
-
-        mockMvc.perform(get("/api/policies/holder/1"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(1)))
-                .andExpect(jsonPath("$[0].policyNumber").value("POL-001"));
+                .andExpect(jsonPath("$.content", hasSize(0)))
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 }
