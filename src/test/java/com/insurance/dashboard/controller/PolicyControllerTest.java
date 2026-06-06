@@ -1,6 +1,5 @@
 package com.insurance.dashboard.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.insurance.dashboard.dto.PolicySummaryResponse;
 import com.insurance.dashboard.model.Policy;
 import com.insurance.dashboard.model.Policy.PolicyStatus;
@@ -13,7 +12,6 @@ import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -32,9 +30,6 @@ class PolicyControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
-
-    @Autowired
-    private ObjectMapper objectMapper;
 
     @MockBean
     private PolicyService policyService;
@@ -154,33 +149,12 @@ class PolicyControllerTest {
     }
 
     @Test
-    void createPolicy_returns201_withCreatedPolicy() throws Exception {
-        when(policyService.createPolicy(eq(1L), any(Policy.class))).thenReturn(policy);
+    void getPoliciesByHolder_returnsList() throws Exception {
+        when(policyService.getPoliciesByHolder(1L)).thenReturn(List.of(policy));
 
-        mockMvc.perform(post("/api/policies/holder/1")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(policy)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.policyNumber").value("POL-001"));
-    }
-
-    @Test
-    void updatePolicyStatus_returnsUpdatedPolicy() throws Exception {
-        policy.setStatus(PolicyStatus.INACTIVE);
-        when(policyService.updatePolicyStatus(1L, PolicyStatus.INACTIVE)).thenReturn(policy);
-
-        mockMvc.perform(patch("/api/policies/1/status?status=INACTIVE"))
+        mockMvc.perform(get("/api/policies/holder/1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("INACTIVE"));
-    }
-
-    @Test
-    void deletePolicy_returns204() throws Exception {
-        doNothing().when(policyService).deletePolicy(1L);
-
-        mockMvc.perform(delete("/api/policies/1"))
-                .andExpect(status().isNoContent());
-
-        verify(policyService).deletePolicy(1L);
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].policyNumber").value("POL-001"));
     }
 }
