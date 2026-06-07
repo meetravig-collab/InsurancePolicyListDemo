@@ -1,12 +1,14 @@
 package com.insurance.dashboard.acceptance;
 
 import com.insurance.dashboard.api.controller.PolicyController;
+import com.insurance.dashboard.api.mapper.PolicyMapperImpl;
 import com.insurance.dashboard.service.PolicyService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.CannotCreateTransactionException;
 
@@ -17,6 +19,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = PolicyController.class)
+@Import(PolicyMapperImpl.class)
 @DisplayName("Policy API - Database Failure")
 class PolicyDatabaseFailureAcceptanceTest {
 

@@ -1,7 +1,9 @@
 package com.insurance.dashboard.api.mapper;
 
 import com.insurance.dashboard.api.dto.response.PolicySummaryResponse;
+import com.insurance.dashboard.api.dto.response.PolicySummaryStats;
 import com.insurance.dashboard.domain.model.Policy;
+import com.insurance.dashboard.service.PolicySummary;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -42,6 +44,15 @@ public class PolicyMapperImpl implements PolicyMapper {
                 .isExpiringSoon(isExpiringSoon(policy.getExpiryDate()))
                 .createdAt(policy.getCreatedAt())
                 .updatedAt(policy.getUpdatedAt())
+                .build();
+    }
+
+    @Override
+    public PolicySummaryStats toStats(PolicySummary summary) {
+        return PolicySummaryStats.builder()
+                .countsByStatus(summary.countsByStatus())
+                .totalPremiumByLineOfBusiness(summary.totalPremiumByLineOfBusiness())
+                .expiringSoonCount(summary.expiringSoonCount())
                 .build();
     }
 

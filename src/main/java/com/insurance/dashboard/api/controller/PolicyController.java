@@ -4,6 +4,7 @@ import com.insurance.dashboard.api.dto.request.FlagPoliciesRequest;
 import com.insurance.dashboard.api.dto.response.FlagPoliciesResponse;
 import com.insurance.dashboard.api.dto.response.PolicySummaryResponse;
 import com.insurance.dashboard.api.dto.response.PolicySummaryStats;
+import com.insurance.dashboard.api.mapper.PolicyMapper;
 import com.insurance.dashboard.domain.model.Policy.LineOfBusiness;
 import com.insurance.dashboard.domain.model.Policy.PolicyStatus;
 import com.insurance.dashboard.domain.model.Policy.Region;
@@ -29,6 +30,7 @@ import java.util.UUID;
 public class PolicyController {
 
     private final PolicyService policyService;
+    private final PolicyMapper policyMapper;
 
     @GetMapping
     public ResponseEntity<Page<PolicySummaryResponse>> getPolicies(
@@ -40,26 +42,29 @@ public class PolicyController {
             @RequestParam(required = false) String search,
             @PageableDefault(size = 10, sort = "effectiveDate", direction = Sort.Direction.DESC) Pageable pageable) {
         log.debug("GET /api/v1/policies - status={}, region={}, lob={}, search={}", status, region, lineOfBusiness, search);
-        return ResponseEntity.ok(policyService.getPolicies(
-                status, region, lineOfBusiness, effectiveDateFrom, effectiveDateTo, search, pageable));
+        Page<PolicySummaryResponse> body = policyService
+                .getPolicies(status, region, lineOfBusiness, effectiveDateFrom, effectiveDateTo, search, pageable)
+                .map(policyMapper::toResponse);
+        return ResponseEntity.ok(body);
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<PolicySummaryResponse> getPolicyById(@PathVariable UUID id) {
         log.debug("GET /api/v1/policies/{}", id);
-        return ResponseEntity.ok(policyService.getPolicyById(id));
+        return ResponseEntity.ok(policyMapper.toResponse(policyService.getPolicyById(id)));
     }
 
     @PatchMapping("/flag")
     public ResponseEntity<FlagPoliciesResponse> flagPoliciesForReview(
             @Valid @RequestBody FlagPoliciesRequest request) {
         log.info("PATCH /api/v1/policies/flag - ids={}", request.getPolicyIds());
-        return ResponseEntity.ok(policyService.flagPoliciesForReview(request));
+        int flaggedCount = policyService.flagPoliciesForReview(request.getPolicyIds());
+        return ResponseEntity.ok(new FlagPoliciesResponse(flaggedCount, request.getPolicyIds()));
     }
 
     @GetMapping("/summary")
     public ResponseEntity<PolicySummaryStats> getSummaryStats() {
         log.debug("GET /api/v1/policies/summary");
-        return ResponseEntity.ok(policyService.getSummaryStats());
+        return ResponseEntity.ok(policyMapper.toStats(policyService.getSummary()));
     }
 }

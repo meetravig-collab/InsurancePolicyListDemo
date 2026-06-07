@@ -1,7 +1,6 @@
 package com.insurance.dashboard.service;
 
-import com.insurance.dashboard.api.dto.response.PolicySummaryResponse;
-import com.insurance.dashboard.api.mapper.PolicyMapperImpl;
+import com.insurance.dashboard.common.exception.PolicyNotFoundException;
 import com.insurance.dashboard.domain.model.Policy;
 import com.insurance.dashboard.domain.model.Policy.LineOfBusiness;
 import com.insurance.dashboard.domain.model.Policy.PolicyStatus;
@@ -21,9 +20,11 @@ import org.springframework.data.jpa.domain.Specification;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -38,7 +39,7 @@ class PolicyServiceTest {
 
     @BeforeEach
     void setUp() {
-        policyService = new PolicyServiceImpl(policyRepository, new PolicyMapperImpl(30), 30);
+        policyService = new PolicyServiceImpl(policyRepository, 30);
 
         policy = Policy.builder()
                 .id(UUID.randomUUID()).policyNumber("POL-100001")
@@ -56,89 +57,35 @@ class PolicyServiceTest {
     }
 
     @Test
-    void getPolicies_returnsPageOfSummaries() {
+    void getPolicies_returnsDomainPage() {
         Pageable pageable = PageRequest.of(0, 10);
         when(policyRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(policy)));
 
-        Page<PolicySummaryResponse> result = policyService.getPolicies(null, null, null, null, null, null, pageable);
+        Page<Policy> result = policyService.getPolicies(null, null, null, null, null, null, pageable);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
         assertThat(result.getContent().get(0).getPolicyNumber()).isEqualTo("POL-100001");
-        assertThat(result.getContent().get(0).getPolicyholderName()).isEqualTo("John Smith");
-        assertThat(result.getContent().get(0).getLineOfBusiness()).isEqualTo("Property");
-        assertThat(result.getContent().get(0).getRegion()).isEqualTo("Singapore");
-        assertThat(result.getContent().get(0).getStatus()).isEqualTo("Active");
-        assertThat(result.getContent().get(0).getUnderwriter()).isEqualTo("Acme Underwriting Co.");
-        assertThat(result.getContent().get(0).isFlaggedForReview()).isFalse();
+        assertThat(result.getContent().get(0).getStatus()).isEqualTo(PolicyStatus.ACTIVE);
     }
 
     @Test
-    void getPolicies_withStatusFilter_delegatesToRepository() {
+    void getPolicies_appliesFiltersViaSpecification() {
         Pageable pageable = PageRequest.of(0, 10);
         when(policyRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(policy)));
 
-        Page<PolicySummaryResponse> result = policyService.getPolicies(PolicyStatus.ACTIVE, null, null, null, null, null, pageable);
+        policyService.getPolicies(PolicyStatus.ACTIVE, Region.JAPAN, LineOfBusiness.MARINE, null, null, "x", pageable);
 
-        assertThat(result.getContent()).hasSize(1);
         verify(policyRepository).findAll(any(Specification.class), eq(pageable));
-    }
-
-    @Test
-    void getPolicies_withRegionFilter_delegatesToRepository() {
-        Pageable pageable = PageRequest.of(0, 10);
-        when(policyRepository.findAll(any(Specification.class), eq(pageable)))
-                .thenReturn(new PageImpl<>(List.of(policy)));
-
-        Page<PolicySummaryResponse> result = policyService.getPolicies(null, Region.THAILAND, null, null, null, null, pageable);
-
-        assertThat(result.getContent()).hasSize(1);
-        verify(policyRepository).findAll(any(Specification.class), eq(pageable));
-    }
-
-    @Test
-    void getPolicies_withLineOfBusinessFilter_delegatesToRepository() {
-        Pageable pageable = PageRequest.of(0, 10);
-        when(policyRepository.findAll(any(Specification.class), eq(pageable)))
-                .thenReturn(new PageImpl<>(List.of(policy)));
-
-        Page<PolicySummaryResponse> result = policyService.getPolicies(null, null, LineOfBusiness.MARINE, null, null, null, pageable);
-
-        assertThat(result.getContent()).hasSize(1);
-        verify(policyRepository).findAll(any(Specification.class), eq(pageable));
-    }
-
-    @Test
-    void getPolicies_isExpiringSoon_trueWhenExpiryWithin30Days() {
-        policy.setExpiryDate(LocalDate.now().plusDays(15));
-        Pageable pageable = PageRequest.of(0, 10);
-        when(policyRepository.findAll(any(Specification.class), eq(pageable)))
-                .thenReturn(new PageImpl<>(List.of(policy)));
-
-        Page<PolicySummaryResponse> result = policyService.getPolicies(null, null, null, null, null, null, pageable);
-
-        assertThat(result.getContent().get(0).isExpiringSoon()).isTrue();
-    }
-
-    @Test
-    void getPolicies_isExpiringSoon_falseWhenExpiryBeyond30Days() {
-        policy.setExpiryDate(LocalDate.now().plusDays(60));
-        Pageable pageable = PageRequest.of(0, 10);
-        when(policyRepository.findAll(any(Specification.class), eq(pageable)))
-                .thenReturn(new PageImpl<>(List.of(policy)));
-
-        Page<PolicySummaryResponse> result = policyService.getPolicies(null, null, null, null, null, null, pageable);
-
-        assertThat(result.getContent().get(0).isExpiringSoon()).isFalse();
     }
 
     @Test
     void getPolicyById_returnsPolicy_whenFound() {
         UUID id = policy.getId();
-        when(policyRepository.findById(id)).thenReturn(java.util.Optional.of(policy));
+        when(policyRepository.findById(id)).thenReturn(Optional.of(policy));
 
-        PolicySummaryResponse result = policyService.getPolicyById(id);
+        Policy result = policyService.getPolicyById(id);
 
         assertThat(result.getPolicyNumber()).isEqualTo("POL-100001");
     }
@@ -146,9 +93,39 @@ class PolicyServiceTest {
     @Test
     void getPolicyById_throwsNotFound_whenMissing() {
         UUID id = UUID.randomUUID();
-        when(policyRepository.findById(id)).thenReturn(java.util.Optional.empty());
+        when(policyRepository.findById(id)).thenReturn(Optional.empty());
 
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> policyService.getPolicyById(id))
-                .isInstanceOf(com.insurance.dashboard.common.exception.PolicyNotFoundException.class);
+        assertThatThrownBy(() -> policyService.getPolicyById(id))
+                .isInstanceOf(PolicyNotFoundException.class);
+    }
+
+    @Test
+    void flagPoliciesForReview_returnsUpdatedCount() {
+        List<UUID> ids = List.of(UUID.randomUUID(), UUID.randomUUID());
+        when(policyRepository.bulkFlagForReview(ids)).thenReturn(2);
+
+        int count = policyService.flagPoliciesForReview(ids);
+
+        assertThat(count).isEqualTo(2);
+        verify(policyRepository).bulkFlagForReview(ids);
+    }
+
+    @Test
+    void getSummary_aggregatesStatusCountsAndPremiums() {
+        List<Object[]> statusRows = new java.util.ArrayList<>();
+        statusRows.add(new Object[]{PolicyStatus.ACTIVE, 5L});
+        statusRows.add(new Object[]{PolicyStatus.PENDING, 2L});
+        List<Object[]> premiumRows = new java.util.ArrayList<>();
+        premiumRows.add(new Object[]{LineOfBusiness.PROPERTY, new BigDecimal("850000.00")});
+
+        when(policyRepository.countGroupByStatus()).thenReturn(statusRows);
+        when(policyRepository.sumPremiumGroupByLineOfBusiness()).thenReturn(premiumRows);
+        when(policyRepository.countExpiringSoon(eq(PolicyStatus.ACTIVE), any(), any())).thenReturn(3L);
+
+        PolicySummary summary = policyService.getSummary();
+
+        assertThat(summary.countsByStatus()).containsEntry("Active", 5L).containsEntry("Pending", 2L);
+        assertThat(summary.totalPremiumByLineOfBusiness()).containsEntry("Property", new BigDecimal("850000.00"));
+        assertThat(summary.expiringSoonCount()).isEqualTo(3L);
     }
 }

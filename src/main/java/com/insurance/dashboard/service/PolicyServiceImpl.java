@@ -1,10 +1,5 @@
 package com.insurance.dashboard.service;
 
-import com.insurance.dashboard.api.dto.request.FlagPoliciesRequest;
-import com.insurance.dashboard.api.dto.response.FlagPoliciesResponse;
-import com.insurance.dashboard.api.dto.response.PolicySummaryResponse;
-import com.insurance.dashboard.api.dto.response.PolicySummaryStats;
-import com.insurance.dashboard.api.mapper.PolicyMapper;
 import com.insurance.dashboard.common.exception.PolicyNotFoundException;
 import com.insurance.dashboard.domain.model.Policy;
 import com.insurance.dashboard.domain.model.Policy.LineOfBusiness;
@@ -23,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -32,48 +28,44 @@ import java.util.UUID;
 public class PolicyServiceImpl implements PolicyService {
 
     private final PolicyRepository policyRepository;
-    private final PolicyMapper policyMapper;
     private final int expiryWarningDays;
 
     public PolicyServiceImpl(PolicyRepository policyRepository,
-                             PolicyMapper policyMapper,
                              @Value("${policy.expiry.warning-days:30}") int expiryWarningDays) {
         this.policyRepository = policyRepository;
-        this.policyMapper = policyMapper;
         this.expiryWarningDays = expiryWarningDays;
     }
 
     @Override
-    public Page<PolicySummaryResponse> getPolicies(PolicyStatus status, Region region,
-                                                    LineOfBusiness lineOfBusiness,
-                                                    LocalDate effectiveDateFrom, LocalDate effectiveDateTo,
-                                                    String search, Pageable pageable) {
+    public Page<Policy> getPolicies(PolicyStatus status, Region region,
+                                    LineOfBusiness lineOfBusiness,
+                                    LocalDate effectiveDateFrom, LocalDate effectiveDateTo,
+                                    String search, Pageable pageable) {
         log.debug("Fetching policies - status={}, region={}, lob={}, search={}, page={}",
                 status, region, lineOfBusiness, search, pageable.getPageNumber());
         Specification<Policy> spec = PolicySpecification.withFilters(
                 status, region, lineOfBusiness, effectiveDateFrom, effectiveDateTo, search);
-        return policyRepository.findAll(spec, pageable).map(policyMapper::toResponse);
+        return policyRepository.findAll(spec, pageable);
     }
 
     @Override
-    public PolicySummaryResponse getPolicyById(UUID id) {
+    public Policy getPolicyById(UUID id) {
         log.debug("Fetching policy id={}", id);
-        Policy policy = policyRepository.findById(id)
+        return policyRepository.findById(id)
                 .orElseThrow(() -> new PolicyNotFoundException(id));
-        return policyMapper.toResponse(policy);
     }
 
     @Override
     @Transactional
-    public FlagPoliciesResponse flagPoliciesForReview(FlagPoliciesRequest request) {
-        log.info("Flagging {} policies for review: {}", request.getPolicyIds().size(), request.getPolicyIds());
-        int flaggedCount = policyRepository.bulkFlagForReview(request.getPolicyIds());
+    public int flagPoliciesForReview(List<UUID> policyIds) {
+        log.info("Flagging {} policies for review: {}", policyIds.size(), policyIds);
+        int flaggedCount = policyRepository.bulkFlagForReview(policyIds);
         log.info("Successfully flagged {} policies", flaggedCount);
-        return new FlagPoliciesResponse(flaggedCount, request.getPolicyIds());
+        return flaggedCount;
     }
 
     @Override
-    public PolicySummaryStats getSummaryStats() {
+    public PolicySummary getSummary() {
         log.debug("Fetching policy summary stats");
 
         Map<String, Long> countsByStatus = new LinkedHashMap<>();
@@ -94,11 +86,7 @@ public class PolicyServiceImpl implements PolicyService {
         long expiringSoon = policyRepository.countExpiringSoon(
                 PolicyStatus.ACTIVE, today, today.plusDays(expiryWarningDays));
 
-        return PolicySummaryStats.builder()
-                .countsByStatus(countsByStatus)
-                .totalPremiumByLineOfBusiness(premiumByLob)
-                .expiringSoonCount(expiringSoon)
-                .build();
+        return new PolicySummary(countsByStatus, premiumByLob, expiringSoon);
     }
 
     private static String toTitleCase(String value) {

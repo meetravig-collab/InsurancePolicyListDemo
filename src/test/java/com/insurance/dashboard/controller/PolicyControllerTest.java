@@ -3,24 +3,25 @@ package com.insurance.dashboard.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.insurance.dashboard.api.controller.PolicyController;
 import com.insurance.dashboard.api.dto.request.FlagPoliciesRequest;
-import com.insurance.dashboard.api.dto.response.FlagPoliciesResponse;
-import com.insurance.dashboard.api.dto.response.PolicySummaryResponse;
-import com.insurance.dashboard.api.dto.response.PolicySummaryStats;
+import com.insurance.dashboard.api.mapper.PolicyMapperImpl;
+import com.insurance.dashboard.domain.model.Policy;
+import com.insurance.dashboard.domain.model.Policy.LineOfBusiness;
 import com.insurance.dashboard.domain.model.Policy.PolicyStatus;
 import com.insurance.dashboard.domain.model.Policy.Region;
 import com.insurance.dashboard.service.PolicyService;
+import com.insurance.dashboard.service.PolicySummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -34,33 +35,33 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(PolicyController.class)
+@Import(PolicyMapperImpl.class)
 class PolicyControllerTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
     @MockBean  private PolicyService policyService;
 
-    private PolicySummaryResponse summaryResponse;
+    private Policy policy;
     private final UUID id = UUID.randomUUID();
 
     @BeforeEach
     void setUp() {
-        summaryResponse = PolicySummaryResponse.builder()
+        policy = Policy.builder()
                 .id(id).policyNumber("POL-100001").policyholderName("John Smith")
-                .lineOfBusiness("Property").region("Singapore").status("Active")
+                .lineOfBusiness(LineOfBusiness.PROPERTY).region(Region.SINGAPORE).status(PolicyStatus.ACTIVE)
                 .underwriter("Acme Underwriting Co.")
                 .premiumAmount(new BigDecimal("250000.00")).currency("SGD")
                 .effectiveDate(LocalDate.of(2024, 1, 1))
                 .expiryDate(LocalDate.of(2029, 1, 1))
-                .isExpiringSoon(false).flaggedForReview(false)
-                .createdAt(Instant.now()).updatedAt(Instant.now())
+                .flaggedForReview(false)
                 .build();
     }
 
     @Test
     void getPolicies_returnsPaginatedList() throws Exception {
         when(policyService.getPolicies(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(summaryResponse), PageRequest.of(0, 10), 1));
+                .thenReturn(new PageImpl<>(List.of(policy), PageRequest.of(0, 10), 1));
 
         mockMvc.perform(get("/api/v1/policies?page=0&size=10"))
                 .andExpect(status().isOk())
@@ -68,6 +69,7 @@ class PolicyControllerTest {
                 .andExpect(jsonPath("$.content[0].policyNumber").value("POL-100001"))
                 .andExpect(jsonPath("$.content[0].policyholderName").value("John Smith"))
                 .andExpect(jsonPath("$.content[0].lineOfBusiness").value("Property"))
+                .andExpect(jsonPath("$.content[0].status").value("Active"))
                 .andExpect(jsonPath("$.content[0].premiumAmount").value(250000.00))
                 .andExpect(jsonPath("$.content[0].currency").value("SGD"))
                 .andExpect(jsonPath("$.content[0].flaggedForReview").value(false))
@@ -77,7 +79,7 @@ class PolicyControllerTest {
     @Test
     void getPolicies_withStatusFilter_passesFilterToService() throws Exception {
         when(policyService.getPolicies(eq(PolicyStatus.ACTIVE), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(summaryResponse)));
+                .thenReturn(new PageImpl<>(List.of(policy)));
 
         mockMvc.perform(get("/api/v1/policies?status=ACTIVE"))
                 .andExpect(status().isOk());
@@ -87,18 +89,18 @@ class PolicyControllerTest {
 
     @Test
     void getPolicies_withRegionFilter_passesFilterToService() throws Exception {
-        when(policyService.getPolicies(any(), eq(Region.THAILAND), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(summaryResponse)));
+        when(policyService.getPolicies(any(), eq(Region.JAPAN), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(policy)));
 
-        mockMvc.perform(get("/api/v1/policies?region=THAILAND"))
+        mockMvc.perform(get("/api/v1/policies?region=JAPAN"))
                 .andExpect(status().isOk());
 
-        verify(policyService).getPolicies(any(), eq(Region.THAILAND), any(), any(), any(), any(), any());
+        verify(policyService).getPolicies(any(), eq(Region.JAPAN), any(), any(), any(), any(), any());
     }
 
     @Test
     void getPolicyById_returnsPolicy() throws Exception {
-        when(policyService.getPolicyById(id)).thenReturn(summaryResponse);
+        when(policyService.getPolicyById(id)).thenReturn(policy);
 
         mockMvc.perform(get("/api/v1/policies/" + id))
                 .andExpect(status().isOk())
@@ -110,7 +112,7 @@ class PolicyControllerTest {
     void flagPoliciesForReview_returnsFlaggedCount() throws Exception {
         List<UUID> ids = List.of(UUID.randomUUID(), UUID.randomUUID());
         FlagPoliciesRequest request = new FlagPoliciesRequest(ids);
-        when(policyService.flagPoliciesForReview(any())).thenReturn(new FlagPoliciesResponse(2, ids));
+        when(policyService.flagPoliciesForReview(any())).thenReturn(2);
 
         mockMvc.perform(patch("/api/v1/policies/flag")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -132,12 +134,11 @@ class PolicyControllerTest {
 
     @Test
     void getSummaryStats_returnsAggregatedStats() throws Exception {
-        PolicySummaryStats stats = PolicySummaryStats.builder()
-                .countsByStatus(Map.of("Active", 5L, "Pending", 1L))
-                .totalPremiumByLineOfBusiness(Map.of("Property", new BigDecimal("850000.00")))
-                .expiringSoonCount(1L)
-                .build();
-        when(policyService.getSummaryStats()).thenReturn(stats);
+        PolicySummary summary = new PolicySummary(
+                Map.of("Active", 5L, "Pending", 1L),
+                Map.of("Property", new BigDecimal("850000.00")),
+                1L);
+        when(policyService.getSummary()).thenReturn(summary);
 
         mockMvc.perform(get("/api/v1/policies/summary"))
                 .andExpect(status().isOk())
