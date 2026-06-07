@@ -34,8 +34,8 @@ public class PolicyEndpointSimulation extends Simulation {
 
     ScenarioBuilder policyList = scenario("Policy list retrieval")
             .exec(
-                http("GET /api/policies?page=0&size=10")
-                    .get("/api/policies?page=0&size=10")
+                http("GET /api/v1/policies?page=0&size=10")
+                    .get("/api/v1/policies?page=0&size=10")
                     .check(status().is(200))
                     .check(jsonPath("$.content").exists())
                     .check(jsonPath("$.totalElements").exists())

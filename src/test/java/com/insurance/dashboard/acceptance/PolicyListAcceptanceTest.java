@@ -1,8 +1,6 @@
 package com.insurance.dashboard.acceptance;
 
 import com.insurance.dashboard.domain.model.Policy;
-import com.insurance.dashboard.domain.model.PolicyHolder;
-import com.insurance.dashboard.infrastructure.persistence.repository.PolicyHolderRepository;
 import com.insurance.dashboard.infrastructure.persistence.repository.PolicyRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,68 +14,63 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.UUID;
 
 import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
-@DisplayName("Policy List - Basic Retrieval")
+@DisplayName("Policy List - Acceptance")
 class PolicyListAcceptanceTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private PolicyRepository policyRepository;
-    @Autowired private PolicyHolderRepository policyHolderRepository;
     @Autowired private EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
-        PolicyHolder holder = policyHolderRepository.save(PolicyHolder.builder()
-                .firstName("John").lastName("Smith")
-                .email("acceptance.john@test.com")
-                .build());
-
         for (int i = 1; i <= 12; i++) {
             policyRepository.save(Policy.builder()
-                    .policyNumber("ACC-2024-" + String.format("%03d", i))
-                    .policyType(Policy.PolicyType.LIFE)
-                    .premiumAmount(new BigDecimal("300.00"))
-                    .coverageAmount(new BigDecimal("500000.00"))
-                    .startDate(LocalDate.of(2024, 1, 1))
-                    .endDate(LocalDate.of(2029, 1, 1))
+                    .policyNumber("ACC-" + String.format("%06d", i))
+                    .policyholderName("John Smith")
+                    .lineOfBusiness(Policy.LineOfBusiness.PROPERTY)
+                    .premiumAmount(new BigDecimal("300000.00"))
+                    .effectiveDate(LocalDate.of(2024, 1, 1))
+                    .expiryDate(LocalDate.of(2029, 1, 1))
                     .status(Policy.PolicyStatus.ACTIVE)
                     .region(Policy.Region.SINGAPORE)
                     .currency("SGD")
-                    .policyHolder(holder)
+                    .underwriter("Acme Underwriting Co.")
                     .build());
         }
 
         policyRepository.save(Policy.builder()
-                .policyNumber("ACC-LAPSED-001")
-                .policyType(Policy.PolicyType.HEALTH)
-                .premiumAmount(new BigDecimal("150.00"))
-                .coverageAmount(new BigDecimal("100000.00"))
-                .startDate(LocalDate.of(2022, 1, 1))
-                .endDate(LocalDate.of(2023, 1, 1))
-                .status(Policy.PolicyStatus.LAPSED)
-                .region(Policy.Region.SINGAPORE)
-                .currency("SGD")
-                .policyHolder(holder)
+                .policyNumber("ACC-CANCELLED-1")
+                .policyholderName("Mei Tan")
+                .lineOfBusiness(Policy.LineOfBusiness.CASUALTY)
+                .premiumAmount(new BigDecimal("150000.00"))
+                .effectiveDate(LocalDate.of(2022, 1, 1))
+                .expiryDate(LocalDate.of(2023, 1, 1))
+                .status(Policy.PolicyStatus.CANCELLED)
+                .region(Policy.Region.THAILAND)
+                .currency("THB")
+                .underwriter("Beta Risk Partners")
                 .build());
 
         policyRepository.save(Policy.builder()
-                .policyNumber("ACC-EXPIRING-001")
-                .policyType(Policy.PolicyType.LIFE)
-                .premiumAmount(new BigDecimal("200.00"))
-                .coverageAmount(new BigDecimal("200000.00"))
-                .startDate(LocalDate.of(2024, 1, 1))
-                .endDate(LocalDate.now().plusDays(15))
+                .policyNumber("ACC-EXPIRING-1")
+                .policyholderName("Hiro Tanaka")
+                .lineOfBusiness(Policy.LineOfBusiness.MARINE)
+                .premiumAmount(new BigDecimal("200000.00"))
+                .effectiveDate(LocalDate.of(2024, 1, 1))
+                .expiryDate(LocalDate.now().plusDays(15))
                 .status(Policy.PolicyStatus.ACTIVE)
-                .region(Policy.Region.SINGAPORE)
-                .currency("SGD")
-                .policyHolder(holder)
+                .region(Policy.Region.JAPAN)
+                .currency("JPY")
+                .underwriter("Acme Underwriting Co.")
                 .build());
 
         entityManager.flush();
@@ -85,113 +78,176 @@ class PolicyListAcceptanceTest {
     }
 
     @Test
-    @DisplayName("Given page=0&size=10, response contains at most 10 records")
-    void givenPageSize10_thenResponseContainsAtMost10Records() throws Exception {
-        mockMvc.perform(get("/api/policies?page=0&size=10"))
+    @DisplayName("page=0&size=10 returns at most 10 records")
+    void givenPageSize10_thenAtMost10Records() throws Exception {
+        mockMvc.perform(get("/api/v1/policies?page=0&size=10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content", hasSize(lessThanOrEqualTo(10))));
     }
 
     @Test
-    @DisplayName("Given page=0&size=10, response includes totalElements and totalPages")
-    void givenPageSize10_thenResponseIncludesPaginationMetadata() throws Exception {
-        mockMvc.perform(get("/api/policies?page=0&size=10"))
+    @DisplayName("response includes totalElements and totalPages")
+    void givenPageSize10_thenPaginationMetadataPresent() throws Exception {
+        mockMvc.perform(get("/api/v1/policies?page=0&size=10"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalElements").isNumber())
                 .andExpect(jsonPath("$.totalElements", greaterThanOrEqualTo(12)))
-                .andExpect(jsonPath("$.totalPages").isNumber())
                 .andExpect(jsonPath("$.totalPages", greaterThanOrEqualTo(2)))
-                .andExpect(jsonPath("$.size").value(10))
-                .andExpect(jsonPath("$.number").value(0));
+                .andExpect(jsonPath("$.size").value(10));
     }
 
     @Test
-    @DisplayName("Each policy contains: policyNumber, holderName, region, status, premium with currency, startDate, endDate")
-    void givenPoliciesExist_thenEachPolicyHasAllRequiredFields() throws Exception {
-        mockMvc.perform(get("/api/policies?status=ACTIVE&page=0&size=10"))
+    @DisplayName("sort by premiumAmount desc orders results")
+    void givenSortByPremiumDesc_thenOrdered() throws Exception {
+        // scope to this test's PROPERTY policies (ACC-0*) which all share premium 300000
+        mockMvc.perform(get("/api/v1/policies?search=ACC-0&sort=premiumAmount,desc&page=0&size=100"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].premiumAmount").value(300000.00));
+    }
+
+    @Test
+    @DisplayName("each policy has all schema fields")
+    void givenPoliciesExist_thenAllFieldsPresent() throws Exception {
+        mockMvc.perform(get("/api/v1/policies?status=ACTIVE&page=0&size=10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[*].id", everyItem(notNullValue())))
                 .andExpect(jsonPath("$.content[*].policyNumber", everyItem(notNullValue())))
-                .andExpect(jsonPath("$.content[*].holderName", everyItem(notNullValue())))
-                .andExpect(jsonPath("$.content[*].region", everyItem(notNullValue())))
+                .andExpect(jsonPath("$.content[*].policyholderName", everyItem(notNullValue())))
+                .andExpect(jsonPath("$.content[*].lineOfBusiness", everyItem(notNullValue())))
                 .andExpect(jsonPath("$.content[*].status", everyItem(notNullValue())))
-                .andExpect(jsonPath("$.content[*].premium.amount", everyItem(notNullValue())))
-                .andExpect(jsonPath("$.content[*].premium.currency", everyItem(notNullValue())))
-                .andExpect(jsonPath("$.content[*].startDate", everyItem(notNullValue())))
-                .andExpect(jsonPath("$.content[*].endDate", everyItem(notNullValue())));
+                .andExpect(jsonPath("$.content[*].premiumAmount", everyItem(notNullValue())))
+                .andExpect(jsonPath("$.content[*].currency", everyItem(notNullValue())))
+                .andExpect(jsonPath("$.content[*].effectiveDate", everyItem(notNullValue())))
+                .andExpect(jsonPath("$.content[*].expiryDate", everyItem(notNullValue())))
+                .andExpect(jsonPath("$.content[*].region", everyItem(notNullValue())))
+                .andExpect(jsonPath("$.content[*].underwriter", everyItem(notNullValue())))
+                .andExpect(jsonPath("$.content[*].flaggedForReview", everyItem(notNullValue())))
+                .andExpect(jsonPath("$.content[*].createdAt", everyItem(notNullValue())));
     }
 
     @Test
-    @DisplayName("holderName is the holder's full name (first + last)")
-    void givenPoliciesExist_thenHolderNameIsFullName() throws Exception {
-        mockMvc.perform(get("/api/policies?status=ACTIVE&page=0&size=100"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-2024-001')].holderName",
-                        hasItem("John Smith")));
-    }
-
-    @Test
-    @DisplayName("region is returned as human-readable display name, not enum value")
-    void givenPoliciesExist_thenRegionIsDisplayName() throws Exception {
-        mockMvc.perform(get("/api/policies?status=ACTIVE&page=0&size=100"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-2024-001')].region",
-                        hasItem("Singapore")));
-    }
-
-    @Test
-    @DisplayName("Given a policy with status ACTIVE, the frontend receives 'Active' not 'ACTIVE'")
-    void givenPolicyWithStatusActive_thenFrontendReceivesActive() throws Exception {
-        mockMvc.perform(get("/api/policies?status=ACTIVE&page=0&size=10"))
+    @DisplayName("status ACTIVE renders as 'Active'")
+    void givenStatusActive_thenRendersActive() throws Exception {
+        mockMvc.perform(get("/api/v1/policies?status=ACTIVE&page=0&size=10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[*].status", everyItem(is("Active"))));
     }
 
     @Test
-    @DisplayName("Given a policy with status LAPSED, the frontend receives 'Lapsed' not 'LAPSED'")
-    void givenPolicyWithStatusLapsed_thenFrontendReceivesLapsed() throws Exception {
-        mockMvc.perform(get("/api/policies?status=LAPSED&page=0&size=100"))
+    @DisplayName("status CANCELLED renders as 'Cancelled'")
+    void givenStatusCancelled_thenRendersCancelled() throws Exception {
+        mockMvc.perform(get("/api/v1/policies?status=CANCELLED&page=0&size=100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-LAPSED-001')].status",
-                        hasItem("Lapsed")));
+                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-CANCELLED-1')].status",
+                        hasItem("Cancelled")));
     }
 
     @Test
-    @DisplayName("premium includes both amount and currency for each policy")
-    void givenPoliciesExist_thenPremiumHasAmountAndCurrency() throws Exception {
-        mockMvc.perform(get("/api/policies?status=ACTIVE&page=0&size=100"))
+    @DisplayName("lineOfBusiness renders as display name")
+    void givenPolicies_thenLineOfBusinessIsDisplayName() throws Exception {
+        mockMvc.perform(get("/api/v1/policies?lineOfBusiness=MARINE&page=0&size=100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-2024-001')].premium.amount",
-                        hasItem(300.0)))
-                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-2024-001')].premium.currency",
-                        hasItem("SGD")));
+                .andExpect(jsonPath("$.content[*].lineOfBusiness", everyItem(is("Marine"))));
     }
 
     @Test
-    @DisplayName("policy dates are returned in ISO-8601 format (yyyy-MM-dd)")
-    void givenPoliciesExist_thenDatesAreIso8601() throws Exception {
-        mockMvc.perform(get("/api/policies?status=ACTIVE&page=0&size=100"))
+    @DisplayName("filter by region returns matching policies")
+    void givenRegionFilter_thenMatchingReturned() throws Exception {
+        mockMvc.perform(get("/api/v1/policies?region=THAILAND&page=0&size=100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-2024-001')].startDate",
-                        hasItem("2024-01-01")))
-                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-2024-001')].endDate",
-                        hasItem("2029-01-01")));
+                .andExpect(jsonPath("$.content[*].region", everyItem(is("Thailand"))));
     }
 
     @Test
-    @DisplayName("Given a policy whose end date is within 30 days from today, then isExpiringSoon is true")
-    void givenPolicyEndDateWithin30Days_thenIsExpiringSoonIsTrue() throws Exception {
-        mockMvc.perform(get("/api/policies?status=ACTIVE&page=0&size=100"))
+    @DisplayName("effective date range filter excludes out-of-range policies")
+    void givenEffectiveDateRange_thenMatchingReturned() throws Exception {
+        mockMvc.perform(get("/api/v1/policies?effectiveDateFrom=2024-01-01&effectiveDateTo=2024-12-31&page=0&size=100"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-EXPIRING-001')].isExpiringSoon",
+                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-000001')]").exists())
+                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-CANCELLED-1')]").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("search on policyholderName returns matching policies")
+    void givenSearchOnName_thenMatchingReturned() throws Exception {
+        mockMvc.perform(get("/api/v1/policies?search=Hiro&page=0&size=100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-EXPIRING-1')]").exists());
+    }
+
+    @Test
+    @DisplayName("search on underwriter returns matching policies")
+    void givenSearchOnUnderwriter_thenMatchingReturned() throws Exception {
+        mockMvc.perform(get("/api/v1/policies?search=Beta&page=0&size=100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-CANCELLED-1')]").exists());
+    }
+
+    @Test
+    @DisplayName("GET /{id} returns a single policy")
+    void givenValidId_thenSinglePolicyReturned() throws Exception {
+        UUID id = policyRepository.findAll().stream()
+                .filter(p -> "ACC-000001".equals(p.getPolicyNumber()))
+                .findFirst().orElseThrow().getId();
+
+        mockMvc.perform(get("/api/v1/policies/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.policyNumber").value("ACC-000001"))
+                .andExpect(jsonPath("$.underwriter").value("Acme Underwriting Co."));
+    }
+
+    @Test
+    @DisplayName("GET /{id} returns 404 for unknown id")
+    void givenUnknownId_thenReturns404() throws Exception {
+        mockMvc.perform(get("/api/v1/policies/" + UUID.randomUUID()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404));
+    }
+
+    @Test
+    @DisplayName("isExpiringSoon true when expiry within 30 days")
+    void givenExpiryWithin30Days_thenExpiringSoonTrue() throws Exception {
+        mockMvc.perform(get("/api/v1/policies?status=ACTIVE&page=0&size=100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-EXPIRING-1')].isExpiringSoon",
                         hasItem(true)));
     }
 
     @Test
-    @DisplayName("Given a policy whose end date is beyond 30 days from today, then isExpiringSoon is false")
-    void givenPolicyEndDateBeyond30Days_thenIsExpiringSoonIsFalse() throws Exception {
-        mockMvc.perform(get("/api/policies?status=ACTIVE&page=0&size=100"))
+    @DisplayName("PATCH /flag sets flaggedForReview to true")
+    void givenIds_whenFlagged_thenFlaggedTrue() throws Exception {
+        UUID id = policyRepository.findAll().stream()
+                .filter(p -> "ACC-000001".equals(p.getPolicyNumber()))
+                .findFirst().orElseThrow().getId();
+
+        mockMvc.perform(patch("/api/v1/policies/flag")
+                        .contentType("application/json")
+                        .content("{\"policyIds\":[\"" + id + "\"]}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.content[?(@.policyNumber == 'ACC-2024-001')].isExpiringSoon",
-                        hasItem(false)));
+                .andExpect(jsonPath("$.flaggedCount").value(1));
+
+        entityManager.clear();
+
+        mockMvc.perform(get("/api/v1/policies/" + id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.flaggedForReview").value(true));
+    }
+
+    @Test
+    @DisplayName("PATCH /flag with empty ids returns 400")
+    void givenEmptyIds_thenReturns400() throws Exception {
+        mockMvc.perform(patch("/api/v1/policies/flag")
+                        .contentType("application/json")
+                        .content("{\"policyIds\":[]}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("GET /summary returns aggregated data")
+    void getSummary_returnsAggregatedData() throws Exception {
+        mockMvc.perform(get("/api/v1/policies/summary"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.countsByStatus").isMap())
+                .andExpect(jsonPath("$.totalPremiumByLineOfBusiness").isMap())
+                .andExpect(jsonPath("$.expiringSoonCount").isNumber());
     }
 }

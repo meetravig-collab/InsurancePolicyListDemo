@@ -26,10 +26,10 @@ class PolicyDatabaseFailureAcceptanceTest {
     @Test
     @DisplayName("Given the policy database is unreachable, then the API returns 503 with a readable error message")
     void givenDatabaseUnreachable_thenReturns503WithReadableMessage() throws Exception {
-        when(policyService.getPaginatedPolicies(any(), any(), any()))
+        when(policyService.getPolicies(any(), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new CannotCreateTransactionException("Could not open JPA EntityManager for transaction"));
 
-        mockMvc.perform(get("/api/policies"))
+        mockMvc.perform(get("/api/v1/policies"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.status").value(503))
                 .andExpect(jsonPath("$.message").value(
@@ -40,10 +40,10 @@ class PolicyDatabaseFailureAcceptanceTest {
     @Test
     @DisplayName("Given the policy database is unreachable, the response does not expose internal stack traces")
     void givenDatabaseUnreachable_thenResponseDoesNotExposeStackTrace() throws Exception {
-        when(policyService.getPaginatedPolicies(any(), any(), any()))
+        when(policyService.getPolicies(any(), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new CannotCreateTransactionException("Could not open JPA EntityManager for transaction"));
 
-        mockMvc.perform(get("/api/policies"))
+        mockMvc.perform(get("/api/v1/policies"))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.trace").doesNotExist())
                 .andExpect(jsonPath("$.exception").doesNotExist())

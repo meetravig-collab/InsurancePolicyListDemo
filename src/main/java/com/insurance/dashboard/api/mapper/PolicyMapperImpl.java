@@ -1,7 +1,6 @@
 package com.insurance.dashboard.api.mapper;
 
 import com.insurance.dashboard.api.dto.response.PolicySummaryResponse;
-import com.insurance.dashboard.api.dto.response.PolicySummaryResponse.PremiumDto;
 import com.insurance.dashboard.domain.model.Policy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,10 +22,6 @@ public class PolicyMapperImpl implements PolicyMapper {
     public PolicySummaryResponse toResponse(Policy policy) {
         log.debug("Mapping policy id={} to response", policy.getId());
 
-        String holderName = policy.getPolicyHolder() != null
-                ? policy.getPolicyHolder().getFirstName() + " " + policy.getPolicyHolder().getLastName()
-                : null;
-
         if (policy.getStatus() == null) {
             log.warn("Policy id={} has null status", policy.getId());
         }
@@ -34,23 +29,26 @@ public class PolicyMapperImpl implements PolicyMapper {
         return PolicySummaryResponse.builder()
                 .id(policy.getId())
                 .policyNumber(policy.getPolicyNumber())
-                .holderName(holderName)
-                .region(policy.getRegion() != null ? policy.getRegion().getDisplayName() : null)
+                .policyholderName(policy.getPolicyholderName())
+                .lineOfBusiness(policy.getLineOfBusiness() != null ? policy.getLineOfBusiness().getDisplayName() : null)
                 .status(policy.getStatus() != null ? toTitleCase(policy.getStatus().name()) : null)
-                .premium(PremiumDto.builder()
-                        .amount(policy.getPremiumAmount())
-                        .currency(policy.getCurrency() != null ? policy.getCurrency() : "USD")
-                        .build())
-                .startDate(policy.getStartDate())
-                .endDate(policy.getEndDate())
-                .isExpiringSoon(isExpiringSoon(policy.getEndDate()))
+                .premiumAmount(policy.getPremiumAmount())
+                .currency(policy.getCurrency())
+                .effectiveDate(policy.getEffectiveDate())
+                .expiryDate(policy.getExpiryDate())
+                .region(policy.getRegion() != null ? policy.getRegion().getDisplayName() : null)
+                .underwriter(policy.getUnderwriter())
+                .flaggedForReview(policy.isFlaggedForReview())
+                .isExpiringSoon(isExpiringSoon(policy.getExpiryDate()))
+                .createdAt(policy.getCreatedAt())
+                .updatedAt(policy.getUpdatedAt())
                 .build();
     }
 
-    private boolean isExpiringSoon(LocalDate endDate) {
-        if (endDate == null) return false;
+    private boolean isExpiringSoon(LocalDate expiryDate) {
+        if (expiryDate == null) return false;
         LocalDate today = LocalDate.now();
-        return !endDate.isBefore(today) && endDate.isBefore(today.plusDays(expiryWarningDays));
+        return !expiryDate.isBefore(today) && expiryDate.isBefore(today.plusDays(expiryWarningDays));
     }
 
     private static String toTitleCase(String value) {

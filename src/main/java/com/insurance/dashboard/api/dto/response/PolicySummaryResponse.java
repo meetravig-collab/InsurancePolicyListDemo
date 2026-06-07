@@ -5,27 +5,28 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Data
 @Builder
 public class PolicySummaryResponse {
 
-    private Long id;
+    private UUID id;
     private String policyNumber;
-    private String holderName;
-    private String region;
+    private String policyholderName;
+    private String lineOfBusiness;
     private String status;
-    private PremiumDto premium;
-    private LocalDate startDate;
-    private LocalDate endDate;
+    private BigDecimal premiumAmount;
+    private String currency;
+    private LocalDate effectiveDate;
+    private LocalDate expiryDate;
+    private String region;
+    private String underwriter;
+    private boolean flaggedForReview;
     @JsonProperty("isExpiringSoon")
     private boolean isExpiringSoon;
-
-    @Data
-    @Builder
-    public static class PremiumDto {
-        private BigDecimal amount;
-        private String currency;
-    }
+    private Instant createdAt;
+    private Instant updatedAt;
 }

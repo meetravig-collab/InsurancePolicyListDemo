@@ -7,9 +7,13 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Entity
 @Table(name = "policies")
@@ -20,51 +24,76 @@ import java.time.LocalDate;
 public class Policy {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
 
     @NotBlank
+    @Column(unique = true)
     private String policyNumber;
 
+    private String policyholderName;
+
     @Enumerated(EnumType.STRING)
-    private PolicyType policyType;
-
-    @Positive
-    private BigDecimal premiumAmount;
-
-    @Positive
-    private BigDecimal coverageAmount;
-
-    private LocalDate startDate;
-
-    private LocalDate endDate;
+    private LineOfBusiness lineOfBusiness;
 
     @Enumerated(EnumType.STRING)
     private PolicyStatus status;
 
-    @Enumerated(EnumType.STRING)
-    private Region region;
+    @Positive
+    private BigDecimal premiumAmount;
 
     private String currency;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "policy_holder_id")
-    private PolicyHolder policyHolder;
+    private LocalDate effectiveDate;
 
-    public enum PolicyType {
-        LIFE, HEALTH, AUTO, HOME, TRAVEL
+    private LocalDate expiryDate;
+
+    @Enumerated(EnumType.STRING)
+    private Region region;
+
+    private String underwriter;
+
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean flaggedForReview = false;
+
+    @CreationTimestamp
+    @Column(updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    private Instant updatedAt;
+
+    public enum LineOfBusiness {
+        PROPERTY("Property"),
+        CASUALTY("Casualty"),
+        ACCIDENT_AND_HEALTH("A&H"),
+        MARINE("Marine");
+
+        private final String displayName;
+
+        LineOfBusiness(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
     }
 
     public enum PolicyStatus {
-        ACTIVE, INACTIVE, EXPIRED, PENDING, LAPSED
+        ACTIVE, EXPIRED, PENDING, CANCELLED
     }
 
     public enum Region {
         SINGAPORE("Singapore"),
         HONG_KONG("Hong Kong"),
         AUSTRALIA("Australia"),
-        INDIA("India"),
-        JAPAN("Japan");
+        JAPAN("Japan"),
+        THAILAND("Thailand"),
+        INDONESIA("Indonesia"),
+        MALAYSIA("Malaysia"),
+        PHILIPPINES("Philippines");
 
         private final String displayName;
 

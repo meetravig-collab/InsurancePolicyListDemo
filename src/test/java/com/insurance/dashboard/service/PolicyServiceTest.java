@@ -3,9 +3,9 @@ package com.insurance.dashboard.service;
 import com.insurance.dashboard.api.dto.response.PolicySummaryResponse;
 import com.insurance.dashboard.api.mapper.PolicyMapperImpl;
 import com.insurance.dashboard.domain.model.Policy;
+import com.insurance.dashboard.domain.model.Policy.LineOfBusiness;
 import com.insurance.dashboard.domain.model.Policy.PolicyStatus;
 import com.insurance.dashboard.domain.model.Policy.Region;
-import com.insurance.dashboard.domain.model.PolicyHolder;
 import com.insurance.dashboard.infrastructure.persistence.repository.PolicyRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,12 +16,16 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,86 +38,117 @@ class PolicyServiceTest {
 
     @BeforeEach
     void setUp() {
-        policyService = new PolicyServiceImpl(policyRepository, new PolicyMapperImpl(30));
-
-        PolicyHolder holder = PolicyHolder.builder()
-                .id(1L).firstName("John").lastName("Smith")
-                .email("john@email.com").build();
+        policyService = new PolicyServiceImpl(policyRepository, new PolicyMapperImpl(30), 30);
 
         policy = Policy.builder()
-                .id(1L).policyNumber("POL-001")
-                .policyType(Policy.PolicyType.LIFE)
-                .premiumAmount(new BigDecimal("250.00"))
-                .coverageAmount(new BigDecimal("500000.00"))
-                .startDate(LocalDate.of(2024, 1, 1))
-                .endDate(LocalDate.of(2029, 1, 1))
+                .id(UUID.randomUUID()).policyNumber("POL-100001")
+                .policyholderName("John Smith")
+                .lineOfBusiness(LineOfBusiness.PROPERTY)
+                .premiumAmount(new BigDecimal("250000.00"))
+                .effectiveDate(LocalDate.of(2024, 1, 1))
+                .expiryDate(LocalDate.of(2029, 1, 1))
                 .status(PolicyStatus.ACTIVE)
                 .region(Region.SINGAPORE)
                 .currency("SGD")
-                .policyHolder(holder)
+                .underwriter("Acme Underwriting Co.")
+                .flaggedForReview(false)
                 .build();
     }
 
     @Test
-    void getPaginatedPolicies_returnsPageOfSummaries() {
+    void getPolicies_returnsPageOfSummaries() {
         Pageable pageable = PageRequest.of(0, 10);
-        when(policyRepository.findAllWithFilters(null, null, pageable))
+        when(policyRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(policy)));
 
-        Page<PolicySummaryResponse> result = policyService.getPaginatedPolicies(null, null, pageable);
+        Page<PolicySummaryResponse> result = policyService.getPolicies(null, null, null, null, null, null, pageable);
 
         assertThat(result.getTotalElements()).isEqualTo(1);
-        assertThat(result.getContent().get(0).getPolicyNumber()).isEqualTo("POL-001");
-        assertThat(result.getContent().get(0).getHolderName()).isEqualTo("John Smith");
+        assertThat(result.getContent().get(0).getPolicyNumber()).isEqualTo("POL-100001");
+        assertThat(result.getContent().get(0).getPolicyholderName()).isEqualTo("John Smith");
+        assertThat(result.getContent().get(0).getLineOfBusiness()).isEqualTo("Property");
         assertThat(result.getContent().get(0).getRegion()).isEqualTo("Singapore");
         assertThat(result.getContent().get(0).getStatus()).isEqualTo("Active");
+        assertThat(result.getContent().get(0).getUnderwriter()).isEqualTo("Acme Underwriting Co.");
+        assertThat(result.getContent().get(0).isFlaggedForReview()).isFalse();
     }
 
     @Test
-    void getPaginatedPolicies_withStatusFilter_delegatesFilterToRepository() {
+    void getPolicies_withStatusFilter_delegatesToRepository() {
         Pageable pageable = PageRequest.of(0, 10);
-        when(policyRepository.findAllWithFilters(PolicyStatus.ACTIVE, null, pageable))
+        when(policyRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(policy)));
 
-        Page<PolicySummaryResponse> result = policyService.getPaginatedPolicies(PolicyStatus.ACTIVE, null, pageable);
+        Page<PolicySummaryResponse> result = policyService.getPolicies(PolicyStatus.ACTIVE, null, null, null, null, null, pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(policyRepository).findAllWithFilters(PolicyStatus.ACTIVE, null, pageable);
+        verify(policyRepository).findAll(any(Specification.class), eq(pageable));
     }
 
     @Test
-    void getPaginatedPolicies_withRegionFilter_delegatesFilterToRepository() {
+    void getPolicies_withRegionFilter_delegatesToRepository() {
         Pageable pageable = PageRequest.of(0, 10);
-        when(policyRepository.findAllWithFilters(null, Region.SINGAPORE, pageable))
+        when(policyRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(policy)));
 
-        Page<PolicySummaryResponse> result = policyService.getPaginatedPolicies(null, Region.SINGAPORE, pageable);
+        Page<PolicySummaryResponse> result = policyService.getPolicies(null, Region.THAILAND, null, null, null, null, pageable);
 
         assertThat(result.getContent()).hasSize(1);
-        verify(policyRepository).findAllWithFilters(null, Region.SINGAPORE, pageable);
+        verify(policyRepository).findAll(any(Specification.class), eq(pageable));
     }
 
     @Test
-    void getPaginatedPolicies_isExpiringSoon_trueWhenEndDateWithin30Days() {
-        policy.setEndDate(LocalDate.now().plusDays(15));
+    void getPolicies_withLineOfBusinessFilter_delegatesToRepository() {
         Pageable pageable = PageRequest.of(0, 10);
-        when(policyRepository.findAllWithFilters(null, null, pageable))
+        when(policyRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(policy)));
 
-        Page<PolicySummaryResponse> result = policyService.getPaginatedPolicies(null, null, pageable);
+        Page<PolicySummaryResponse> result = policyService.getPolicies(null, null, LineOfBusiness.MARINE, null, null, null, pageable);
+
+        assertThat(result.getContent()).hasSize(1);
+        verify(policyRepository).findAll(any(Specification.class), eq(pageable));
+    }
+
+    @Test
+    void getPolicies_isExpiringSoon_trueWhenExpiryWithin30Days() {
+        policy.setExpiryDate(LocalDate.now().plusDays(15));
+        Pageable pageable = PageRequest.of(0, 10);
+        when(policyRepository.findAll(any(Specification.class), eq(pageable)))
+                .thenReturn(new PageImpl<>(List.of(policy)));
+
+        Page<PolicySummaryResponse> result = policyService.getPolicies(null, null, null, null, null, null, pageable);
 
         assertThat(result.getContent().get(0).isExpiringSoon()).isTrue();
     }
 
     @Test
-    void getPaginatedPolicies_isExpiringSoon_falseWhenEndDateBeyond30Days() {
-        policy.setEndDate(LocalDate.now().plusDays(60));
+    void getPolicies_isExpiringSoon_falseWhenExpiryBeyond30Days() {
+        policy.setExpiryDate(LocalDate.now().plusDays(60));
         Pageable pageable = PageRequest.of(0, 10);
-        when(policyRepository.findAllWithFilters(null, null, pageable))
+        when(policyRepository.findAll(any(Specification.class), eq(pageable)))
                 .thenReturn(new PageImpl<>(List.of(policy)));
 
-        Page<PolicySummaryResponse> result = policyService.getPaginatedPolicies(null, null, pageable);
+        Page<PolicySummaryResponse> result = policyService.getPolicies(null, null, null, null, null, null, pageable);
 
         assertThat(result.getContent().get(0).isExpiringSoon()).isFalse();
+    }
+
+    @Test
+    void getPolicyById_returnsPolicy_whenFound() {
+        UUID id = policy.getId();
+        when(policyRepository.findById(id)).thenReturn(java.util.Optional.of(policy));
+
+        PolicySummaryResponse result = policyService.getPolicyById(id);
+
+        assertThat(result.getPolicyNumber()).isEqualTo("POL-100001");
+    }
+
+    @Test
+    void getPolicyById_throwsNotFound_whenMissing() {
+        UUID id = UUID.randomUUID();
+        when(policyRepository.findById(id)).thenReturn(java.util.Optional.empty());
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> policyService.getPolicyById(id))
+                .isInstanceOf(com.insurance.dashboard.common.exception.PolicyNotFoundException.class);
     }
 }

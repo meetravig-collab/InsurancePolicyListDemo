@@ -1,22 +1,49 @@
--- Sample Policy Holders
-INSERT INTO policy_holders (id, first_name, last_name, email, phone, date_of_birth, address)
-VALUES (1, 'John', 'Smith', 'john.smith@email.com', '555-1001', '1985-03-15', '123 Main St, New York, NY');
+-- ============================================================================
+-- Seed: 220 realistic insurance policy records (PostgreSQL)
+-- Covers all status values, lines of business, APAC regions, currencies,
+-- a realistic spread of effective/expiry dates and premium amounts (1k - 5M).
+-- Safe to re-run: truncates first. Requires PostgreSQL 13+ (gen_random_uuid()).
+-- ============================================================================
 
-INSERT INTO policy_holders (id, first_name, last_name, email, phone, date_of_birth, address)
-VALUES (2, 'Jane', 'Doe', 'jane.doe@email.com', '555-1002', '1990-07-22', '456 Oak Ave, Los Angeles, CA');
+TRUNCATE TABLE policies;
 
-INSERT INTO policy_holders (id, first_name, last_name, email, phone, date_of_birth, address)
-VALUES (3, 'Robert', 'Johnson', 'robert.j@email.com', '555-1003', '1978-11-05', '789 Pine Rd, Chicago, IL');
+WITH base AS (
+    SELECT
+        seq,
+        (DATE '2022-01-01' + ((random() * 1300)::int))            AS eff,
+        (1 + (random() * 2)::int)                                  AS term_years  -- 1..3 year terms
+    FROM generate_series(1, 220) AS seq
+)
+INSERT INTO policies (
+    id, policy_number, policyholder_name, line_of_business, status,
+    premium_amount, currency, effective_date, expiry_date, region,
+    underwriter, flagged_for_review, created_at, updated_at
+)
+SELECT
+    gen_random_uuid(),
+    'POL-' || lpad((100000 + seq)::text, 6, '0'),
+    (ARRAY['Wei Chen','Mei Lin','Hiro Tanaka','Yuki Sato','Arjun Patel',
+           'Siti Nurhaliza','Somchai Boonmee','Budi Santoso','Maria Santos','Jin Park',
+           'Aiko Yamamoto','Raj Kumar','Lim Wei Jie','Nguyen Van Anh','Dewi Lestari',
+           'Charoen Wong','Putri Handayani','Kenji Nakamura','Grace Ong','Daniel Lim'])
+        [1 + (seq % 20)],
+    (ARRAY['PROPERTY','CASUALTY','ACCIDENT_AND_HEALTH','MARINE'])[1 + (seq % 4)],
+    (ARRAY['ACTIVE','EXPIRED','PENDING','CANCELLED'])[1 + (seq % 4)],
+    round((random() * 4999000 + 1000)::numeric, 2),
+    (ARRAY['USD','SGD','HKD','AUD','JPY','THB'])[1 + (seq % 6)],
+    eff,
+    (eff + (term_years || ' year')::interval)::date,
+    (ARRAY['SINGAPORE','HONG_KONG','AUSTRALIA','JAPAN','THAILAND','INDONESIA','MALAYSIA','PHILIPPINES'])
+        [1 + (seq % 8)],
+    (ARRAY['Acme Underwriting Co.','Beta Risk Partners','Pacific Re',
+           'Orient Assurance','Summit Underwriters','Lloyd''s APAC'])[1 + (seq % 6)],
+    (seq % 11 = 0),
+    now(),
+    now()
+FROM base;
 
--- Sample Policies
-INSERT INTO policies (id, policy_number, policy_type, premium_amount, coverage_amount, start_date, end_date, status, policy_holder_id)
-VALUES (1, 'POL-2024-001', 'LIFE', 250.00, 500000.00, '2024-01-01', '2029-01-01', 'ACTIVE', 1);
-
-INSERT INTO policies (id, policy_number, policy_type, premium_amount, coverage_amount, start_date, end_date, status, policy_holder_id)
-VALUES (2, 'POL-2024-002', 'HEALTH', 150.00, 100000.00, '2024-01-01', '2024-12-31', 'ACTIVE', 1);
-
-INSERT INTO policies (id, policy_number, policy_type, premium_amount, coverage_amount, start_date, end_date, status, policy_holder_id)
-VALUES (3, 'POL-2024-003', 'AUTO', 100.00, 50000.00, '2024-02-01', '2025-02-01', 'ACTIVE', 2);
-
-INSERT INTO policies (id, policy_number, policy_type, premium_amount, coverage_amount, start_date, end_date, status, policy_holder_id)
-VALUES (4, 'POL-2023-004', 'HOME', 200.00, 300000.00, '2023-06-01', '2024-06-01', 'EXPIRED', 3);
+-- A few guaranteed "expiring soon" active policies (expiry within ~3 weeks of today)
+UPDATE policies
+SET status = 'ACTIVE',
+    expiry_date = CURRENT_DATE + ((random() * 25)::int)
+WHERE policy_number IN ('POL-100007', 'POL-100042', 'POL-100099', 'POL-100150', 'POL-100201');
