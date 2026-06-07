@@ -4,9 +4,9 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class InsurancePolicyHoldersDashboardApplication {
+public class PolicyOverviewDashboardApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(InsurancePolicyHoldersDashboardApplication.class, args);
+        SpringApplication.run(PolicyOverviewDashboardApplication.class, args);
     }
 }

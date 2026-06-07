@@ -1,4 +1,4 @@
-package com.insurance.dashboard.model;
+package com.insurance.dashboard.domain.model;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;

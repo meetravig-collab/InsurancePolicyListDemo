@@ -1,8 +1,9 @@
 package com.insurance.dashboard.controller;
 
-import com.insurance.dashboard.dto.PolicySummaryResponse;
-import com.insurance.dashboard.model.Policy.PolicyStatus;
-import com.insurance.dashboard.model.Policy.Region;
+import com.insurance.dashboard.api.controller.PolicyController;
+import com.insurance.dashboard.api.dto.response.PolicySummaryResponse;
+import com.insurance.dashboard.domain.model.Policy.PolicyStatus;
+import com.insurance.dashboard.domain.model.Policy.Region;
 import com.insurance.dashboard.service.PolicyService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,11 +28,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(PolicyController.class)
 class PolicyControllerTest {
 
-    @Autowired
-    private MockMvc mockMvc;
-
-    @MockBean
-    private PolicyService policyService;
+    @Autowired private MockMvc mockMvc;
+    @MockBean  private PolicyService policyService;
 
     private PolicySummaryResponse summaryResponse;
 

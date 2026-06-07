@@ -1,0 +1,207 @@
+{
+  "info": {
+    "name": "PolicyOverviewDashboard",
+    "description": "Postman collection for GET /api/policies — Policy Overview Dashboard",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8081",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Policy List",
+      "item": [
+        {
+          "name": "Get all policies (default pagination)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/policies?page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "policies"],
+              "query": [
+                { "key": "page", "value": "0", "description": "Zero-based page number" },
+                { "key": "size", "value": "10", "description": "Number of records per page" }
+              ]
+            },
+            "description": "Returns a paginated list of all policies sorted by startDate descending."
+          },
+          "response": []
+        },
+        {
+          "name": "Filter by status — ACTIVE",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/policies?status=ACTIVE&page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "policies"],
+              "query": [
+                { "key": "status", "value": "ACTIVE", "description": "Allowed: ACTIVE, INACTIVE, EXPIRED, PENDING, LAPSED" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            },
+            "description": "Returns only ACTIVE policies. Status is returned as title-case in the response (e.g. 'Active')."
+          },
+          "response": []
+        },
+        {
+          "name": "Filter by status — LAPSED",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/policies?status=LAPSED&page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "policies"],
+              "query": [
+                { "key": "status", "value": "LAPSED" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            },
+            "description": "Returns only LAPSED policies. Response status field will be 'Lapsed'."
+          },
+          "response": []
+        },
+        {
+          "name": "Filter by status — EXPIRED",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/policies?status=EXPIRED&page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "policies"],
+              "query": [
+                { "key": "status", "value": "EXPIRED" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filter by region — Singapore",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/policies?region=SINGAPORE&page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "policies"],
+              "query": [
+                { "key": "region", "value": "SINGAPORE", "description": "Allowed: SINGAPORE, HONG_KONG, AUSTRALIA, INDIA, JAPAN" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            },
+            "description": "Returns policies for Singapore. Region is returned as a human-readable name (e.g. 'Singapore') in the response."
+          },
+          "response": []
+        },
+        {
+          "name": "Filter by region — Hong Kong",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/policies?region=HONG_KONG&page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "policies"],
+              "query": [
+                { "key": "region", "value": "HONG_KONG" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filter by status and region",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/policies?status=ACTIVE&region=SINGAPORE&page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "policies"],
+              "query": [
+                { "key": "status", "value": "ACTIVE" },
+                { "key": "region", "value": "SINGAPORE" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "10" }
+              ]
+            },
+            "description": "Combines status and region filters. Both are optional — omit either to remove that filter."
+          },
+          "response": []
+        },
+        {
+          "name": "Pagination — page 2",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/policies?page=1&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "policies"],
+              "query": [
+                { "key": "page", "value": "1", "description": "Page index is zero-based: page=1 is the second page" },
+                { "key": "size", "value": "10" }
+              ]
+            },
+            "description": "Fetches the second page of results (page is zero-based)."
+          },
+          "response": []
+        },
+        {
+          "name": "Expiring soon — ACTIVE policies within 30 days",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/policies?status=ACTIVE&page=0&size=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "policies"],
+              "query": [
+                { "key": "status", "value": "ACTIVE" },
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "50" }
+              ]
+            },
+            "description": "Fetches active policies. Filter client-side on isExpiringSoon=true to identify policies expiring within 30 days."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

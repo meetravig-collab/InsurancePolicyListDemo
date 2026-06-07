@@ -1,15 +1,15 @@
 package com.insurance.dashboard.service;
 
-import com.insurance.dashboard.dto.PolicySummaryResponse;
-import com.insurance.dashboard.model.Policy;
-import com.insurance.dashboard.model.Policy.PolicyStatus;
-import com.insurance.dashboard.model.Policy.Region;
-import com.insurance.dashboard.model.PolicyHolder;
-import com.insurance.dashboard.repository.PolicyRepository;
+import com.insurance.dashboard.api.dto.response.PolicySummaryResponse;
+import com.insurance.dashboard.api.mapper.PolicyMapperImpl;
+import com.insurance.dashboard.domain.model.Policy;
+import com.insurance.dashboard.domain.model.Policy.PolicyStatus;
+import com.insurance.dashboard.domain.model.Policy.Region;
+import com.insurance.dashboard.domain.model.PolicyHolder;
+import com.insurance.dashboard.infrastructure.persistence.repository.PolicyRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -20,30 +20,23 @@ import org.springframework.data.domain.Pageable;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PolicyServiceTest {
 
-    @Mock
-    private PolicyRepository policyRepository;
+    @Mock private PolicyRepository policyRepository;
 
-    @Mock
-    private PolicyHolderService policyHolderService;
-
-    @InjectMocks
-    private PolicyService policyService;
-
+    private PolicyServiceImpl policyService;
     private Policy policy;
-    private PolicyHolder holder;
 
     @BeforeEach
     void setUp() {
-        holder = PolicyHolder.builder()
+        policyService = new PolicyServiceImpl(policyRepository, new PolicyMapperImpl(30));
+
+        PolicyHolder holder = PolicyHolder.builder()
                 .id(1L).firstName("John").lastName("Smith")
                 .email("john@email.com").build();
 
@@ -122,64 +115,5 @@ class PolicyServiceTest {
         Page<PolicySummaryResponse> result = policyService.getPaginatedPolicies(null, null, pageable);
 
         assertThat(result.getContent().get(0).isExpiringSoon()).isFalse();
-    }
-
-    @Test
-    void getPolicyById_returnsPolicy_whenFound() {
-        when(policyRepository.findById(1L)).thenReturn(Optional.of(policy));
-
-        Policy result = policyService.getPolicyById(1L);
-
-        assertThat(result.getPolicyNumber()).isEqualTo("POL-001");
-    }
-
-    @Test
-    void getPolicyById_throwsException_whenNotFound() {
-        when(policyRepository.findById(99L)).thenReturn(Optional.empty());
-
-        assertThatThrownBy(() -> policyService.getPolicyById(99L))
-                .isInstanceOf(RuntimeException.class)
-                .hasMessageContaining("Policy not found with id: 99");
-    }
-
-    @Test
-    void createPolicy_assignsHolderAndSaves() {
-        when(policyHolderService.getPolicyHolderById(1L)).thenReturn(holder);
-        when(policyRepository.save(policy)).thenReturn(policy);
-
-        Policy result = policyService.createPolicy(1L, policy);
-
-        assertThat(result.getPolicyHolder()).isEqualTo(holder);
-        verify(policyRepository).save(policy);
-    }
-
-    @Test
-    void updatePolicyStatus_updatesAndSaves() {
-        when(policyRepository.findById(1L)).thenReturn(Optional.of(policy));
-        when(policyRepository.save(policy)).thenReturn(policy);
-
-        Policy result = policyService.updatePolicyStatus(1L, PolicyStatus.INACTIVE);
-
-        assertThat(result.getStatus()).isEqualTo(PolicyStatus.INACTIVE);
-        verify(policyRepository).save(policy);
-    }
-
-    @Test
-    void deletePolicy_callsRepositoryDelete() {
-        doNothing().when(policyRepository).deleteById(1L);
-
-        policyService.deletePolicy(1L);
-
-        verify(policyRepository).deleteById(1L);
-    }
-
-    @Test
-    void getPoliciesByHolder_returnsListForHolder() {
-        when(policyRepository.findByPolicyHolderId(1L)).thenReturn(List.of(policy));
-
-        List<Policy> result = policyService.getPoliciesByHolder(1L);
-
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).getPolicyNumber()).isEqualTo("POL-001");
     }
 }

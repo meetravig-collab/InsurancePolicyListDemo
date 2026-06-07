@@ -1,6 +1,6 @@
-package com.insurance.dashboard.repository;
+package com.insurance.dashboard.infrastructure.persistence.repository;
 
-import com.insurance.dashboard.model.PolicyHolder;
+import com.insurance.dashboard.domain.model.PolicyHolder;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
