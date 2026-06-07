@@ -2,18 +2,20 @@
 
 ## Test Strategy
 
-The test suite is layered to give fast feedback on correctness while also validating
-full-stack behaviour and non-functional requirements.
+The suite is layered to give fast feedback on logic while validating full-stack behaviour
+and the performance NFR. The hexagonal architecture makes the layers independently
+testable: the service is tested against a mocked **port**, and the persistence adapter is
+exercised through the real Spring context.
 
 ```
 ┌──────────────────────────────────────────────┐
 │  Performance (Gatling)                        │  NFR gate: p95 < 500ms @ 50 users
 ├──────────────────────────────────────────────┤
-│  Acceptance (SpringBootTest + PostgreSQL)     │  BDD scenarios, real DB, auto-rollback
+│  Acceptance (SpringBootTest + PostgreSQL)     │  full stack, real DB, auto-rollback
 ├──────────────────────────────────────────────┤
-│  Controller slice (WebMvcTest + MockBean)     │  HTTP contract, exception handling
+│  Controller slice (WebMvcTest + real mapper)  │  HTTP contract, mapping, errors
 ├──────────────────────────────────────────────┤
-│  Unit (MockitoExtension)                      │  Service & mapper logic, fast
+│  Service unit (Mockito on the port)           │  use-case logic, no Spring, no DB
 └──────────────────────────────────────────────┘
 ```
 
@@ -21,189 +23,122 @@ full-stack behaviour and non-functional requirements.
 
 ## Running the Tests
 
-### All unit + integration tests
-
 ```bash
+# All unit + slice + acceptance tests
 mvn test
+
+# A single class
+mvn test -Dtest=PolicyServiceTest
+
+# Performance (app must be running)
+mvn spring-boot:run            # terminal 1
+mvn gatling:test               # terminal 2  (reports in target/gatling/)
 ```
 
-### Performance test only (requires the application to be running)
-
-```bash
-# Terminal 1 — start the application
-mvn spring-boot:run
-
-# Terminal 2 — run the load test
-mvn gatling:test
-```
-
-Override the target URL if the application runs on a different host or port:
-
-```bash
-mvn gatling:test -DbaseUrl=http://localhost:8081
-```
-
-Reports are written to `target/gatling/` — open the `index.html` for the full HTML report.
+> On this Windows dev machine the TLS-intercepting proxy requires
+> `set MAVEN_OPTS=-Djavax.net.ssl.trustStoreType=Windows-ROOT` before `mvn` so dependency
+> downloads verify against the Windows certificate store.
 
 ---
 
-## Test Types
+## 1. Service Unit Tests
 
-### 1. Unit Tests
+**`src/test/java/.../service/PolicyServiceTest.java`** — JUnit 5 + Mockito.
 
-**Location:** `src/test/java/com/insurance/dashboard/service/`
-
-**Tools:** JUnit 5, Mockito
-
-**What they test:** `PolicyServiceImpl` in isolation.
-`PolicyRepository` is mocked; `PolicyMapperImpl` is used as the real implementation
-(its logic is simple and deterministic).
+`PolicyServiceImpl` is built directly (`new PolicyServiceImpl(port, 30)`) with the
+**`PolicyRepositoryPort` mocked**. No Spring context, no database — the fastest loop.
+Because the service now deals in domain types, the tests assert on `Policy` / `PageResult`
+/ `PolicySummary`, not DTOs.
 
 | Test | Asserts |
 |---|---|
-| `getPaginatedPolicies_returnsPageOfSummaries` | holderName, region display name, title-case status |
-| `getPaginatedPolicies_withStatusFilter_delegatesFilterToRepository` | filter is passed through unchanged |
-| `getPaginatedPolicies_withRegionFilter_delegatesFilterToRepository` | region filter is passed through |
-| `getPaginatedPolicies_isExpiringSoon_trueWhenEndDateWithin30Days` | expiry flag set correctly |
-| `getPaginatedPolicies_isExpiringSoon_falseWhenEndDateBeyond30Days` | expiry flag not set |
-
-```bash
-# Run unit tests only
-mvn test -pl . -Dtest="PolicyServiceTest"
-```
+| `getPolicies_delegatesToPortAndReturnsResult` | filter + page forwarded to the port; `PageResult<Policy>` returned |
+| `getPolicyById_returnsPolicy_whenFound` | domain `Policy` returned |
+| `getPolicyById_throwsNotFound_whenMissing` | `PolicyNotFoundException` on empty `Optional` |
+| `flagPoliciesForReview_returnsUpdatedCount` | delegates to `port.flagForReview`, returns count |
+| `getSummary_formatsAggregatesFromPort` | enum→title-case status, enum→display-name LOB (e.g. `A&H`), expiring-soon count |
 
 ---
 
-### 2. Controller Slice Tests
+## 2. Controller Slice Tests
 
-**Location:** `src/test/java/com/insurance/dashboard/controller/`
+**`src/test/java/.../controller/PolicyControllerTest.java`** — `@WebMvcTest` +
+`@Import(PolicyMapperImpl.class)` + `@MockBean PolicyService`.
 
-**Tools:** `@WebMvcTest`, `@MockBean`, MockMvc
-
-**What they test:** HTTP layer — status codes, JSON shape, filter parameter binding.
-`PolicyService` is mocked; no database is involved.
+The **real mapper** is imported so JSON serialization and domain→DTO mapping are actually
+verified; the service is mocked and stubbed with **domain objects** (`Policy`,
+`PageResult<Policy>`, `PolicySummary`). Filter binding is checked with an
+`ArgumentCaptor<PolicyFilter>`.
 
 | Test | Asserts |
 |---|---|
-| `getAllPolicies_returnsPaginatedList` | 200 OK, all response fields present |
-| `getAllPolicies_withStatusFilter_passesFilterToService` | status param bound and forwarded |
-| `getAllPolicies_withRegionFilter_passesFilterToService` | region param bound and forwarded |
-| `getAllPolicies_isExpiringSoon_trueWhenEndDateWithin30Days` | `isExpiringSoon` serialised correctly |
-| `getAllPolicies_returnsEmptyPage_whenNoPolicies` | empty content array, totalElements = 0 |
-
-```bash
-mvn test -pl . -Dtest="PolicyControllerTest"
-```
+| `getPolicies_returnsPaginatedList` | 200; all DTO fields incl. `policyholderName`, `lineOfBusiness`, `premiumAmount`, `currency`, `flaggedForReview` |
+| `getPolicies_withStatusFilter_passesFilterToService` | captured `PolicyFilter.status() == ACTIVE` |
+| `getPolicies_withRegionFilter_passesFilterToService` | captured `PolicyFilter.region() == JAPAN` |
+| `getPolicyById_returnsPolicy` | mapper output serialized for one policy |
+| `flagPoliciesForReview_returnsFlaggedCount` | `flaggedCount` + `policyIds` echoed |
+| `flagPoliciesForReview_returns400_whenPolicyIdsEmpty` | `@NotEmpty` → 400 |
+| `getSummaryStats_returnsAggregatedStats` | `countsByStatus`, `expiringSoonCount` |
 
 ---
 
-### 3. Acceptance Tests
+## 3. Acceptance Tests (full stack, real PostgreSQL)
 
-**Location:** `src/test/java/com/insurance/dashboard/acceptance/`
+**`src/test/java/.../acceptance/`** — `@SpringBootTest` + `@AutoConfigureMockMvc` +
+`@Transactional`.
 
-**Tools:** `@SpringBootTest`, `@AutoConfigureMockMvc`, `@Transactional`, real PostgreSQL
+These run through the **entire hexagon**: controller → service → port →
+`PolicyPersistenceAdapter` → JPA → PostgreSQL, and back through `PolicyEntityMapper` and
+`PolicyMapper`. Each method seeds its own data in `@BeforeEach` via the
+`PolicyJpaRepository` (building `PolicyEntity` rows) and is rolled back by `@Transactional`.
 
-**What they test:** Full-stack BDD scenarios against a live database.
-Each test method inserts its own data in `@BeforeEach` and rolls back automatically
-via `@Transactional` — no test pollution between runs.
+### PolicyListAcceptanceTest (17 tests)
 
-#### PolicyListAcceptanceTest (11 tests)
-
-Maps directly to the acceptance criteria defined by the product team:
-
-| BDD Scenario | Test method |
+| Area | Test methods |
 |---|---|
-| `?page=0&size=10` returns at most 10 records | `givenPageSize10_thenResponseContainsAtMost10Records` |
-| Response includes `totalElements` and `totalPages` | `givenPageSize10_thenResponseIncludesPaginationMetadata` |
-| Each policy has all required fields | `givenPoliciesExist_thenEachPolicyHasAllRequiredFields` |
-| `holderName` is first + last name | `givenPoliciesExist_thenHolderNameIsFullName` |
-| `region` is display name, not enum | `givenPoliciesExist_thenRegionIsDisplayName` |
-| `ACTIVE` status → `"Active"` in response | `givenPolicyWithStatusActive_thenFrontendReceivesActive` |
-| `LAPSED` status → `"Lapsed"` in response | `givenPolicyWithStatusLapsed_thenFrontendReceivesLapsed` |
-| `premium` has `amount` and `currency` | `givenPoliciesExist_thenPremiumHasAmountAndCurrency` |
-| Dates are ISO-8601 | `givenPoliciesExist_thenDatesAreIso8601` |
-| End date within 30 days → `isExpiringSoon: true` | `givenPolicyEndDateWithin30Days_thenIsExpiringSoonIsTrue` |
-| End date beyond 30 days → `isExpiringSoon: false` | `givenPolicyEndDateBeyond30Days_thenIsExpiringSoonIsFalse` |
+| Pagination | `givenPageSize10_thenAtMost10Records`, `givenPageSize10_thenPaginationMetadataPresent` |
+| Sorting | `givenSortByPremiumDesc_thenOrdered` |
+| Field completeness | `givenPoliciesExist_thenAllFieldsPresent` (incl. `lineOfBusiness`, `underwriter`, `createdAt`) |
+| Status formatting | `givenStatusActive_thenRendersActive`, `givenStatusCancelled_thenRendersCancelled` |
+| LOB display name | `givenPolicies_thenLineOfBusinessIsDisplayName` |
+| Filters | `givenRegionFilter_thenMatchingReturned`, `givenEffectiveDateRange_thenMatchingReturned` |
+| Free-text search | `givenSearchOnName_thenMatchingReturned`, `givenSearchOnUnderwriter_thenMatchingReturned` |
+| Get by id | `givenValidId_thenSinglePolicyReturned`, `givenUnknownId_thenReturns404` |
+| Expiry indicator | `givenExpiryWithin30Days_thenExpiringSoonTrue` |
+| Bulk flag | `givenIds_whenFlagged_thenFlaggedTrue`, `givenEmptyIds_thenReturns400` |
+| Summary | `getSummary_returnsAggregatedData` |
 
-**Test data strategy:**
-- 12 ACTIVE policies (to make pagination meaningful — fills more than one page of size 10)
-- 1 LAPSED policy (for status-formatting assertion)
-- 1 ACTIVE policy with `endDate = today + 15 days` (for expiry indicator assertion)
-- All inserted via JPA repositories in `@BeforeEach`, rolled back after each test
+**Test data:** 12 `ACTIVE`/`PROPERTY` policies (`ACC-000001…`), one `CANCELLED`/`CASUALTY`
+(`ACC-CANCELLED-1`), one `ACTIVE`/`MARINE` expiring in 15 days (`ACC-EXPIRING-1`).
 
-#### PolicyDatabaseFailureAcceptanceTest (2 tests)
+### PolicyDatabaseFailureAcceptanceTest (2 tests)
 
-| BDD Scenario | Test method |
+`@WebMvcTest` + `@Import(PolicyMapperImpl.class)` + `@MockBean PolicyService` stubbed to
+throw `CannotCreateTransactionException` (what Spring raises when no DB connection can be
+acquired) — validates the 503 contract without taking the database down.
+
+| Test | Asserts |
 |---|---|
-| DB unreachable → 503 with readable message | `givenDatabaseUnreachable_thenReturns503WithReadableMessage` |
-| DB unreachable → no stack trace in response | `givenDatabaseUnreachable_thenResponseDoesNotExposeStackTrace` |
-
-**Approach:** `@WebMvcTest` + `@MockBean PolicyService` throwing
-`CannotCreateTransactionException` — the exact exception Spring raises when the
-database connection cannot be established. Validates the `GlobalExceptionHandler`
-contract without actually bringing down the database.
-
-```bash
-mvn test -pl . -Dtest="PolicyListAcceptanceTest,PolicyDatabaseFailureAcceptanceTest"
-```
+| `givenDatabaseUnreachable_thenReturns503WithReadableMessage` | 503, readable message, timestamp |
+| `givenDatabaseUnreachable_thenResponseDoesNotExposeStackTrace` | no `trace`/`exception`/`stackTrace`, no class names |
 
 ---
 
-### 4. Performance Test
+## 4. Performance Test
 
-**Location:** `src/test/java/com/insurance/dashboard/performance/PolicyEndpointSimulation.java`
+**`src/test/java/.../performance/PolicyEndpointSimulation.java`** — Gatling (Java DSL),
+run via `mvn gatling:test` against a running app.
 
-**Tools:** Gatling 3.13 (Java DSL), `gatling-maven-plugin`
-
-**What it tests:** Non-functional requirement — p95 response time under production-level load.
-
-**Load profile:**
-
-| Parameter | Value |
+| Profile | Value |
 |---|---|
-| Concurrent users | 50 (closed model — constant concurrency) |
-| Duration | 30 seconds |
-| Target endpoint | `GET /api/policies?page=0&size=10` |
+| Load | 50 concurrent users (closed model) |
+| Duration | 30 s |
+| Endpoint | `GET /api/v1/policies?page=0&size=10` |
 
-**Pass/fail assertions (hard gates):**
+**Hard gates:** p95 < 500 ms; success rate > 99%.
 
-| Assertion | Threshold |
-|---|---|
-| p95 response time | < 500 ms |
-| Successful requests | > 99% |
-
-**Observed result (local PostgreSQL):**
-
-| Metric | Value |
-|---|---|
-| p95 | 169 ms |
-| p99 | 215 ms |
-| Mean | 115 ms |
-| Success rate | 100% |
-| Total requests in 30s | 12,589 |
-
-The p95 is 169 ms — 3× below the 500 ms threshold — indicating significant headroom.
-
----
-
-## Acceptance Criteria Coverage Matrix
-
-| Acceptance Criterion | Test class | Test type |
-|---|---|---|
-| Paginated response | `PolicyListAcceptanceTest` | Acceptance |
-| At most 10 records for size=10 | `PolicyListAcceptanceTest` | Acceptance |
-| `totalElements` and `totalPages` present | `PolicyListAcceptanceTest` | Acceptance |
-| `policyNumber` in each record | `PolicyListAcceptanceTest` | Acceptance |
-| `holderName` as full name | `PolicyListAcceptanceTest` | Acceptance |
-| `region` as display name | `PolicyListAcceptanceTest` | Acceptance |
-| `status` in title case | `PolicyListAcceptanceTest` | Acceptance |
-| `premium.amount` and `premium.currency` | `PolicyListAcceptanceTest` | Acceptance |
-| Dates in ISO-8601 format | `PolicyListAcceptanceTest` | Acceptance |
-| `isExpiringSoon: true` within 30 days | `PolicyListAcceptanceTest` | Acceptance |
-| `isExpiringSoon: false` beyond 30 days | `PolicyListAcceptanceTest` | Acceptance |
-| 503 when DB unreachable | `PolicyDatabaseFailureAcceptanceTest` | Acceptance |
-| No stack trace in error response | `PolicyDatabaseFailureAcceptanceTest` | Acceptance |
-| p95 < 500ms @ 50 concurrent users | `PolicyEndpointSimulation` | Performance |
+**Observed (local PostgreSQL):** p95 169 ms, p99 215 ms, mean 115 ms, 100% success over
+12,589 requests — ~3× under the threshold.
 
 ---
 
@@ -211,35 +146,28 @@ The p95 is 169 ms — 3× below the 500 ms threshold — indicating significant 
 
 | Test class | Tests | Type | Database |
 |---|---|---|---|
-| `PolicyServiceTest` | 5 | Unit | None (mocked) |
-| `PolicyControllerTest` | 5 | Controller slice | None (mocked) |
-| `PolicyListAcceptanceTest` | 11 | Acceptance | Real PostgreSQL |
-| `PolicyDatabaseFailureAcceptanceTest` | 2 | Acceptance | None (mocked exception) |
-| **Total** | **23** | | |
+| `PolicyServiceTest` | 5 | Service unit (port mocked) | None |
+| `PolicyControllerTest` | 7 | Controller slice (real mapper, service mocked) | None |
+| `PolicyListAcceptanceTest` | 17 | Acceptance (full stack) | Real PostgreSQL |
+| `PolicyDatabaseFailureAcceptanceTest` | 2 | Acceptance (mocked failure) | None |
+| **Total** | **31** | | |
 | `PolicyEndpointSimulation` | 1 simulation | Performance | Real PostgreSQL |
 
 ---
 
-## Test Data Isolation
+## How the layering shapes the tests
 
-Acceptance tests use `@Transactional` at the test class level.
-Spring wraps each test method in a transaction that is **rolled back** after the method completes.
-Data inserted in `@BeforeEach` is visible within the test but leaves no trace in the database.
+- **Service tests mock the domain port**, not Spring Data. Swapping persistence technology
+  would not touch a single service test — proof the dependency points inward.
+- **Controller tests import the real `PolicyMapperImpl`** and stub the service with domain
+  objects, so both the HTTP contract and the domain→DTO mapping are verified together.
+- **Acceptance tests seed through `PolicyJpaRepository` / `PolicyEntity`** (the infrastructure
+  adapter's own types), exercising the entity↔domain mapping end-to-end.
 
-No cleanup scripts, no test-specific database, no `@DirtiesContext` needed.
+## Test data isolation
 
-The existing seed data from `data.sql` persists in the database between test runs
-and is present alongside the test data during acceptance tests.
-Tests use unique policy number prefixes (`ACC-*`) and JSONPath filters to target
-their own records without being affected by seed data.
-
----
-
-## Dependency Notes
-
-- `@MockBean` creates mocks of interfaces in Spring Test — `PolicyService` (interface) is
-  mocked cleanly in `PolicyControllerTest` and `PolicyDatabaseFailureAcceptanceTest`.
-- `PolicyServiceImpl` is instantiated directly with `new PolicyServiceImpl(...)` in
-  `PolicyServiceTest` — no Spring context overhead, fastest feedback loop.
-- `PolicyMapperImpl` is used as the real implementation in `PolicyServiceTest` so that
-  mapping assertions (holderName, region display name, status casing) remain meaningful.
+Acceptance tests are `@Transactional`, so each method's inserts roll back automatically — no
+cleanup scripts, no `@DirtiesContext`. The 220-row `data.sql` seed (loaded manually via
+`psql` for the running app) may coexist in the DB; tests target their own rows with `ACC-*`
+prefixes and JSONPath filters, and scope magnitude-sensitive assertions (e.g. the
+premium-sort test searches `ACC-0`) so seed data cannot interfere.
