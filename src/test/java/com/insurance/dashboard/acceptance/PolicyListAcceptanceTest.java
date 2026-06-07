@@ -1,7 +1,8 @@
 package com.insurance.dashboard.acceptance;
 
 import com.insurance.dashboard.domain.model.Policy;
-import com.insurance.dashboard.infrastructure.persistence.repository.PolicyRepository;
+import com.insurance.dashboard.infrastructure.persistence.entity.PolicyEntity;
+import com.insurance.dashboard.infrastructure.persistence.repository.PolicyJpaRepository;
 import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -27,13 +28,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PolicyListAcceptanceTest {
 
     @Autowired private MockMvc mockMvc;
-    @Autowired private PolicyRepository policyRepository;
+    @Autowired private PolicyJpaRepository policyRepository;
     @Autowired private EntityManager entityManager;
 
     @BeforeEach
     void setUp() {
         for (int i = 1; i <= 12; i++) {
-            policyRepository.save(Policy.builder()
+            policyRepository.save(PolicyEntity.builder()
                     .policyNumber("ACC-" + String.format("%06d", i))
                     .policyholderName("John Smith")
                     .lineOfBusiness(Policy.LineOfBusiness.PROPERTY)
@@ -47,7 +48,7 @@ class PolicyListAcceptanceTest {
                     .build());
         }
 
-        policyRepository.save(Policy.builder()
+        policyRepository.save(PolicyEntity.builder()
                 .policyNumber("ACC-CANCELLED-1")
                 .policyholderName("Mei Tan")
                 .lineOfBusiness(Policy.LineOfBusiness.CASUALTY)
@@ -60,7 +61,7 @@ class PolicyListAcceptanceTest {
                 .underwriter("Beta Risk Partners")
                 .build());
 
-        policyRepository.save(Policy.builder()
+        policyRepository.save(PolicyEntity.builder()
                 .policyNumber("ACC-EXPIRING-1")
                 .policyholderName("Hiro Tanaka")
                 .lineOfBusiness(Policy.LineOfBusiness.MARINE)

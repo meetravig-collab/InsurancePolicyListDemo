@@ -1,29 +1,20 @@
 package com.insurance.dashboard.service;
 
 import com.insurance.dashboard.domain.model.Policy;
-import com.insurance.dashboard.domain.model.Policy.LineOfBusiness;
-import com.insurance.dashboard.domain.model.Policy.PolicyStatus;
-import com.insurance.dashboard.domain.model.Policy.Region;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import com.insurance.dashboard.domain.query.PageQuery;
+import com.insurance.dashboard.domain.query.PageResult;
+import com.insurance.dashboard.domain.query.PolicyFilter;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
 /**
- * Application service. Deals only in domain types and application-owned results
- * ({@link Policy}, {@link PolicySummary}) — it has no dependency on the API/DTO layer.
+ * Application service. Depends only on domain types and the domain port —
+ * no API/DTO types and no Spring Data / JPA types.
  */
 public interface PolicyService {
 
-    Page<Policy> getPolicies(PolicyStatus status,
-                             Region region,
-                             LineOfBusiness lineOfBusiness,
-                             LocalDate effectiveDateFrom,
-                             LocalDate effectiveDateTo,
-                             String search,
-                             Pageable pageable);
+    PageResult<Policy> getPolicies(PolicyFilter filter, PageQuery page);
 
     Policy getPolicyById(UUID id);
 

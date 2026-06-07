@@ -5,14 +5,20 @@ import com.insurance.dashboard.api.dto.response.FlagPoliciesResponse;
 import com.insurance.dashboard.api.dto.response.PolicySummaryResponse;
 import com.insurance.dashboard.api.dto.response.PolicySummaryStats;
 import com.insurance.dashboard.api.mapper.PolicyMapper;
+import com.insurance.dashboard.domain.model.Policy;
 import com.insurance.dashboard.domain.model.Policy.LineOfBusiness;
 import com.insurance.dashboard.domain.model.Policy.PolicyStatus;
 import com.insurance.dashboard.domain.model.Policy.Region;
+import com.insurance.dashboard.domain.query.PageQuery;
+import com.insurance.dashboard.domain.query.PageResult;
+import com.insurance.dashboard.domain.query.PolicyFilter;
+import com.insurance.dashboard.domain.query.SortDirection;
 import com.insurance.dashboard.service.PolicyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -21,6 +27,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -41,10 +48,14 @@ public class PolicyController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate effectiveDateTo,
             @RequestParam(required = false) String search,
             @PageableDefault(size = 10, sort = "effectiveDate", direction = Sort.Direction.DESC) Pageable pageable) {
+
         log.debug("GET /api/v1/policies - status={}, region={}, lob={}, search={}", status, region, lineOfBusiness, search);
-        Page<PolicySummaryResponse> body = policyService
-                .getPolicies(status, region, lineOfBusiness, effectiveDateFrom, effectiveDateTo, search, pageable)
-                .map(policyMapper::toResponse);
+
+        PolicyFilter filter = new PolicyFilter(status, region, lineOfBusiness, effectiveDateFrom, effectiveDateTo, search);
+        PageResult<Policy> result = policyService.getPolicies(filter, toPageQuery(pageable));
+
+        List<PolicySummaryResponse> content = result.content().stream().map(policyMapper::toResponse).toList();
+        Page<PolicySummaryResponse> body = new PageImpl<>(content, pageable, result.totalElements());
         return ResponseEntity.ok(body);
     }
 
@@ -66,5 +77,12 @@ public class PolicyController {
     public ResponseEntity<PolicySummaryStats> getSummaryStats() {
         log.debug("GET /api/v1/policies/summary");
         return ResponseEntity.ok(policyMapper.toStats(policyService.getSummary()));
+    }
+
+    private static PageQuery toPageQuery(Pageable pageable) {
+        Sort.Order order = pageable.getSort().stream().findFirst().orElse(null);
+        String sortField = order != null ? order.getProperty() : "effectiveDate";
+        SortDirection direction = (order != null && order.isAscending()) ? SortDirection.ASC : SortDirection.DESC;
+        return new PageQuery(pageable.getPageNumber(), pageable.getPageSize(), sortField, direction);
     }
 }

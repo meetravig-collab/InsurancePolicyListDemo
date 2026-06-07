@@ -5,21 +5,21 @@ import com.insurance.dashboard.domain.model.Policy;
 import com.insurance.dashboard.domain.model.Policy.LineOfBusiness;
 import com.insurance.dashboard.domain.model.Policy.PolicyStatus;
 import com.insurance.dashboard.domain.model.Policy.Region;
-import com.insurance.dashboard.infrastructure.persistence.repository.PolicyRepository;
+import com.insurance.dashboard.domain.port.PolicyRepositoryPort;
+import com.insurance.dashboard.domain.query.PageQuery;
+import com.insurance.dashboard.domain.query.PageResult;
+import com.insurance.dashboard.domain.query.PolicyFilter;
+import com.insurance.dashboard.domain.query.SortDirection;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -32,10 +32,12 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class PolicyServiceTest {
 
-    @Mock private PolicyRepository policyRepository;
+    @Mock private PolicyRepositoryPort policyRepository;
 
     private PolicyServiceImpl policyService;
     private Policy policy;
+
+    private final PageQuery pageQuery = new PageQuery(0, 10, "effectiveDate", SortDirection.DESC);
 
     @BeforeEach
     void setUp() {
@@ -57,27 +59,16 @@ class PolicyServiceTest {
     }
 
     @Test
-    void getPolicies_returnsDomainPage() {
-        Pageable pageable = PageRequest.of(0, 10);
-        when(policyRepository.findAll(any(Specification.class), eq(pageable)))
-                .thenReturn(new PageImpl<>(List.of(policy)));
+    void getPolicies_delegatesToPortAndReturnsResult() {
+        PolicyFilter filter = new PolicyFilter(null, null, null, null, null, null);
+        when(policyRepository.findAll(filter, pageQuery))
+                .thenReturn(new PageResult<>(List.of(policy), 1, 0, 10));
 
-        Page<Policy> result = policyService.getPolicies(null, null, null, null, null, null, pageable);
+        PageResult<Policy> result = policyService.getPolicies(filter, pageQuery);
 
-        assertThat(result.getTotalElements()).isEqualTo(1);
-        assertThat(result.getContent().get(0).getPolicyNumber()).isEqualTo("POL-100001");
-        assertThat(result.getContent().get(0).getStatus()).isEqualTo(PolicyStatus.ACTIVE);
-    }
-
-    @Test
-    void getPolicies_appliesFiltersViaSpecification() {
-        Pageable pageable = PageRequest.of(0, 10);
-        when(policyRepository.findAll(any(Specification.class), eq(pageable)))
-                .thenReturn(new PageImpl<>(List.of(policy)));
-
-        policyService.getPolicies(PolicyStatus.ACTIVE, Region.JAPAN, LineOfBusiness.MARINE, null, null, "x", pageable);
-
-        verify(policyRepository).findAll(any(Specification.class), eq(pageable));
+        assertThat(result.totalElements()).isEqualTo(1);
+        assertThat(result.content().get(0).getPolicyNumber()).isEqualTo("POL-100001");
+        verify(policyRepository).findAll(filter, pageQuery);
     }
 
     @Test
@@ -102,30 +93,26 @@ class PolicyServiceTest {
     @Test
     void flagPoliciesForReview_returnsUpdatedCount() {
         List<UUID> ids = List.of(UUID.randomUUID(), UUID.randomUUID());
-        when(policyRepository.bulkFlagForReview(ids)).thenReturn(2);
+        when(policyRepository.flagForReview(ids)).thenReturn(2);
 
         int count = policyService.flagPoliciesForReview(ids);
 
         assertThat(count).isEqualTo(2);
-        verify(policyRepository).bulkFlagForReview(ids);
+        verify(policyRepository).flagForReview(ids);
     }
 
     @Test
-    void getSummary_aggregatesStatusCountsAndPremiums() {
-        List<Object[]> statusRows = new java.util.ArrayList<>();
-        statusRows.add(new Object[]{PolicyStatus.ACTIVE, 5L});
-        statusRows.add(new Object[]{PolicyStatus.PENDING, 2L});
-        List<Object[]> premiumRows = new java.util.ArrayList<>();
-        premiumRows.add(new Object[]{LineOfBusiness.PROPERTY, new BigDecimal("850000.00")});
-
-        when(policyRepository.countGroupByStatus()).thenReturn(statusRows);
-        when(policyRepository.sumPremiumGroupByLineOfBusiness()).thenReturn(premiumRows);
+    void getSummary_formatsAggregatesFromPort() {
+        when(policyRepository.countByStatus())
+                .thenReturn(Map.of(PolicyStatus.ACTIVE, 5L, PolicyStatus.PENDING, 2L));
+        when(policyRepository.totalPremiumByLineOfBusiness())
+                .thenReturn(Map.of(LineOfBusiness.ACCIDENT_AND_HEALTH, new BigDecimal("850000.00")));
         when(policyRepository.countExpiringSoon(eq(PolicyStatus.ACTIVE), any(), any())).thenReturn(3L);
 
         PolicySummary summary = policyService.getSummary();
 
         assertThat(summary.countsByStatus()).containsEntry("Active", 5L).containsEntry("Pending", 2L);
-        assertThat(summary.totalPremiumByLineOfBusiness()).containsEntry("Property", new BigDecimal("850000.00"));
+        assertThat(summary.totalPremiumByLineOfBusiness()).containsEntry("A&H", new BigDecimal("850000.00"));
         assertThat(summary.expiringSoonCount()).isEqualTo(3L);
     }
 }

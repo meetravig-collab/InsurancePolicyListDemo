@@ -1,67 +1,38 @@
 package com.insurance.dashboard.domain.model;
 
-import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.UUID;
 
-@Entity
-@Table(name = "policies")
+/**
+ * Domain model — a persistence-ignorant POJO. It carries no JPA/Hibernate
+ * annotations; the JPA mapping lives in infrastructure (PolicyEntity).
+ */
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class Policy {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-
-    @NotBlank
-    @Column(unique = true)
     private String policyNumber;
-
     private String policyholderName;
-
-    @Enumerated(EnumType.STRING)
     private LineOfBusiness lineOfBusiness;
-
-    @Enumerated(EnumType.STRING)
     private PolicyStatus status;
-
-    @Positive
     private BigDecimal premiumAmount;
-
     private String currency;
-
     private LocalDate effectiveDate;
-
     private LocalDate expiryDate;
-
-    @Enumerated(EnumType.STRING)
     private Region region;
-
     private String underwriter;
-
-    @Builder.Default
-    @Column(nullable = false, columnDefinition = "boolean default false")
-    private boolean flaggedForReview = false;
-
-    @CreationTimestamp
-    @Column(updatable = false)
+    private boolean flaggedForReview;
     private Instant createdAt;
-
-    @UpdateTimestamp
     private Instant updatedAt;
 
     public enum LineOfBusiness {

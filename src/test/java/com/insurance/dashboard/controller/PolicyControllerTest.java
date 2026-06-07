@@ -8,16 +8,17 @@ import com.insurance.dashboard.domain.model.Policy;
 import com.insurance.dashboard.domain.model.Policy.LineOfBusiness;
 import com.insurance.dashboard.domain.model.Policy.PolicyStatus;
 import com.insurance.dashboard.domain.model.Policy.Region;
+import com.insurance.dashboard.domain.query.PageResult;
+import com.insurance.dashboard.domain.query.PolicyFilter;
 import com.insurance.dashboard.service.PolicyService;
 import com.insurance.dashboard.service.PolicySummary;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -60,8 +61,8 @@ class PolicyControllerTest {
 
     @Test
     void getPolicies_returnsPaginatedList() throws Exception {
-        when(policyService.getPolicies(any(), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(policy), PageRequest.of(0, 10), 1));
+        when(policyService.getPolicies(any(), any()))
+                .thenReturn(new PageResult<>(List.of(policy), 1, 0, 10));
 
         mockMvc.perform(get("/api/v1/policies?page=0&size=10"))
                 .andExpect(status().isOk())
@@ -78,24 +79,28 @@ class PolicyControllerTest {
 
     @Test
     void getPolicies_withStatusFilter_passesFilterToService() throws Exception {
-        when(policyService.getPolicies(eq(PolicyStatus.ACTIVE), any(), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(policy)));
+        when(policyService.getPolicies(any(), any()))
+                .thenReturn(new PageResult<>(List.of(policy), 1, 0, 10));
 
         mockMvc.perform(get("/api/v1/policies?status=ACTIVE"))
                 .andExpect(status().isOk());
 
-        verify(policyService).getPolicies(eq(PolicyStatus.ACTIVE), any(), any(), any(), any(), any(), any());
+        ArgumentCaptor<PolicyFilter> captor = ArgumentCaptor.forClass(PolicyFilter.class);
+        verify(policyService).getPolicies(captor.capture(), any());
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().status()).isEqualTo(PolicyStatus.ACTIVE);
     }
 
     @Test
     void getPolicies_withRegionFilter_passesFilterToService() throws Exception {
-        when(policyService.getPolicies(any(), eq(Region.JAPAN), any(), any(), any(), any(), any()))
-                .thenReturn(new PageImpl<>(List.of(policy)));
+        when(policyService.getPolicies(any(), any()))
+                .thenReturn(new PageResult<>(List.of(policy), 1, 0, 10));
 
         mockMvc.perform(get("/api/v1/policies?region=JAPAN"))
                 .andExpect(status().isOk());
 
-        verify(policyService).getPolicies(any(), eq(Region.JAPAN), any(), any(), any(), any(), any());
+        ArgumentCaptor<PolicyFilter> captor = ArgumentCaptor.forClass(PolicyFilter.class);
+        verify(policyService).getPolicies(captor.capture(), any());
+        org.assertj.core.api.Assertions.assertThat(captor.getValue().region()).isEqualTo(Region.JAPAN);
     }
 
     @Test
