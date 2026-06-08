@@ -1,0 +1,35 @@
+version: 2
+updates:
+  # Keep GitHub Actions (SHA-pinned) up to date — Dependabot bumps both the SHA
+  # and the version comment, and raises a PR for review.
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: ci
+    labels:
+      - dependencies
+      - github-actions
+
+  # Maven dependencies (Spring Boot, drivers, etc.)
+  - package-ecosystem: maven
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: deps
+    labels:
+      - dependencies
+      - java
+
+  # Base images referenced by the Dockerfiles
+  - package-ecosystem: docker
+    directory: "/"
+    schedule:
+      interval: weekly
+    commit-message:
+      prefix: docker
+    labels:
+      - dependencies
+      - docker
