@@ -106,7 +106,10 @@ Each session lists policies, captures a real UUID, then fetches that policy's de
 | **Total** | **38** | | |
 | `PolicyEndpointSimulation` | 1 sim | Performance | Real PostgreSQL |
 
-Coverage: JaCoCo runs on `mvn verify` → `target/site/jacoco/index.html` (uploaded as a CI artifact).
+Coverage: JaCoCo runs on `mvn verify` → `target/site/jacoco/index.html` (uploaded as a CI
+artifact). **Actual: 92.5% line, 93.9% instruction** (Lombok-generated code and the bootstrap
+class excluded). **Gated** at `mvn verify`: bundle **line ≥ 80%** and **instruction ≥ 85%** —
+the build fails below either.
 
 ## Test data isolation
 Acceptance tests are `@Transactional`, so each method's inserts roll back automatically — no
