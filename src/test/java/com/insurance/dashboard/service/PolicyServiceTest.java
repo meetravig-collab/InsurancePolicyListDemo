@@ -102,7 +102,7 @@ class PolicyServiceTest {
     }
 
     @Test
-    void getSummary_formatsAggregatesFromPort() {
+    void getSummary_passesThroughEnumKeyedAggregatesFromPort() {
         when(policyRepository.countByStatus())
                 .thenReturn(Map.of(PolicyStatus.ACTIVE, 5L, PolicyStatus.PENDING, 2L));
         when(policyRepository.totalPremiumByLineOfBusiness())
@@ -111,8 +111,11 @@ class PolicyServiceTest {
 
         PolicySummary summary = policyService.getSummary();
 
-        assertThat(summary.countsByStatus()).containsEntry("Active", 5L).containsEntry("Pending", 2L);
-        assertThat(summary.totalPremiumByLineOfBusiness()).containsEntry("A&H", new BigDecimal("850000.00"));
+        // service returns domain-enum-keyed aggregates unchanged; display formatting is the mapper's job
+        assertThat(summary.countsByStatus())
+                .containsEntry(PolicyStatus.ACTIVE, 5L).containsEntry(PolicyStatus.PENDING, 2L);
+        assertThat(summary.totalPremiumByLineOfBusiness())
+                .containsEntry(LineOfBusiness.ACCIDENT_AND_HEALTH, new BigDecimal("850000.00"));
         assertThat(summary.expiringSoonCount()).isEqualTo(3L);
     }
 }

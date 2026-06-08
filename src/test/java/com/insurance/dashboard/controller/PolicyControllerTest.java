@@ -140,14 +140,16 @@ class PolicyControllerTest {
     @Test
     void getSummaryStats_returnsAggregatedStats() throws Exception {
         PolicySummary summary = new PolicySummary(
-                Map.of("Active", 5L, "Pending", 1L),
-                Map.of("Property", new BigDecimal("850000.00")),
+                Map.of(PolicyStatus.ACTIVE, 5L, PolicyStatus.PENDING, 1L),
+                Map.of(LineOfBusiness.PROPERTY, new BigDecimal("850000.00")),
                 1L);
         when(policyService.getSummary()).thenReturn(summary);
 
+        // the real mapper formats enum keys to display names in the JSON
         mockMvc.perform(get("/api/v1/policies/summary"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.expiringSoonCount").value(1))
-                .andExpect(jsonPath("$.countsByStatus.Active").value(5));
+                .andExpect(jsonPath("$.countsByStatus.Active").value(5))
+                .andExpect(jsonPath("$.totalPremiumByLineOfBusiness.Property").value(850000.00));
     }
 }

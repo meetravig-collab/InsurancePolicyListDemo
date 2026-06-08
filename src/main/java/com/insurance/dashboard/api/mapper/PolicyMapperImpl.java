@@ -12,7 +12,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -53,9 +56,17 @@ public class PolicyMapperImpl implements PolicyMapper {
 
     @Override
     public PolicySummaryStats toStats(PolicySummary summary) {
+        Map<String, Long> countsByStatus = new LinkedHashMap<>();
+        summary.countsByStatus()
+                .forEach((status, count) -> countsByStatus.put(toTitleCase(status.name()), count));
+
+        Map<String, BigDecimal> premiumByLineOfBusiness = new LinkedHashMap<>();
+        summary.totalPremiumByLineOfBusiness()
+                .forEach((lob, total) -> premiumByLineOfBusiness.put(lob.getDisplayName(), total));
+
         return PolicySummaryStats.builder()
-                .countsByStatus(summary.countsByStatus())
-                .totalPremiumByLineOfBusiness(summary.totalPremiumByLineOfBusiness())
+                .countsByStatus(countsByStatus)
+                .totalPremiumByLineOfBusiness(premiumByLineOfBusiness)
                 .expiringSoonCount(summary.expiringSoonCount())
                 .build();
     }
