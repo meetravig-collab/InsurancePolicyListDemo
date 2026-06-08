@@ -79,9 +79,12 @@ business logic, and the two can evolve independently.
 so persistence technology can change without touching domain or service code.
 
 ### Specification-based filtering (isolated in infrastructure)
-The service passes a domain `PolicyFilter`; `PolicySpecification` turns it into a JPA
-`Specification`. This handles all-optional multi-criteria filtering and avoids the
-PostgreSQL `lower(bytea)` null-type inference issue a hand-written JPQL `LIKE` hits.
+The service passes a domain `PolicyFilter`; `PolicySpecification`
+(`infrastructure/persistence/specification`) turns it into a JPA `Specification` by
+**composing one self-contained, null-safe criterion per field** via `Specification.allOf(...)`.
+Adding a new filter means adding a criterion + one line — existing criteria are untouched
+(Open/Closed). It also handles all-optional filtering and avoids the PostgreSQL
+`lower(bytea)` null-type inference issue a hand-written JPQL `LIKE` hits.
 
 ### Caching of frequently accessed reads
 Caffeine-backed caches via the Spring Cache abstraction:

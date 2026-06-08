@@ -11,6 +11,7 @@ import com.insurance.dashboard.domain.query.SortDirection;
 import com.insurance.dashboard.infrastructure.persistence.entity.PolicyEntity;
 import com.insurance.dashboard.infrastructure.persistence.entity.PolicyEntityMapper;
 import com.insurance.dashboard.infrastructure.persistence.repository.PolicyJpaRepository;
+import com.insurance.dashboard.infrastructure.persistence.specification.PolicySpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;

@@ -35,7 +35,7 @@ dependencies**; every dependency points inward.
         │    persistence/entity/PolicyEntity (@Entity)  │  JPA mapping
         │    persistence/entity/PolicyEntityMapper      │  entity ↔ domain
         │    persistence/repository/PolicyJpaRepository │  Spring Data JPA
-        │    persistence/PolicySpecification            │  filter → Specification
+        │    persistence/specification/PolicySpecification │  filter → Specification
         └───────────────────────────────────────────────┘
 
 Cross-cutting:  config/ (caching)   api/exception/ (HTTP error handling)   domain/exception/ (domain errors)
@@ -69,7 +69,7 @@ com.insurance.dashboard/
 │   └── exception/PolicyNotFoundException
 ├── infrastructure/persistence/
 │   ├── PolicyPersistenceAdapter          implements PolicyRepositoryPort
-│   ├── PolicySpecification               PolicyFilter → Specification<PolicyEntity>
+│   ├── specification/PolicySpecification  PolicyFilter → Specification<PolicyEntity> (composable criteria)
 │   ├── entity/PolicyEntity (+ PolicyEntityMapper)
 │   └── repository/PolicyJpaRepository    Spring Data JPA + JpaSpecificationExecutor
 ├── config/             CacheConfig, CacheNames
