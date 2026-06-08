@@ -31,7 +31,7 @@ psql -U postgres -d insuranceDB -f src/main/resources/data.sql
 mvn spring-boot:run        # http://localhost:8081
 ```
 
-Full setup, configuration, and API reference: see **[DEVELOPMENT.md](DEVELOPMENT.md)**.
+Full setup, configuration, and API reference: see **[ProjectOverview.md](ProjectOverview.md)**.
 
 ## Run with Docker
 
@@ -67,9 +67,11 @@ docker run -p 8081:8081 \
 
 | Document | What's inside |
 |---|---|
-| **[DESIGN.md](DESIGN.md)** | Architecture (ports & adapters), layering & dependency rule, domain model, SOLID, API contract, key design decisions |
-| **[DEVELOPMENT.md](DEVELOPMENT.md)** | Prerequisites, build & run, environment variables, full API reference, logging, project structure |
-| **[TESTING.md](TESTING.md)** | Test strategy, the four test layers, how to run them, coverage, and performance results |
+| **[ProjectOverview.md](ProjectOverview.md)** | What the service does, endpoints, features, quick start |
+| **[TechStack.md](TechStack.md)** | Technologies used and why; build, container & CI tooling |
+| **[Architecture.md](Architecture.md)** | Hexagonal layering, dependency rule, package structure, SOLID |
+| **[Design.md](Design.md)** | Domain schema, API contract, caching & key design decisions |
+| **[Testing.md](Testing.md)** | Test strategy, layers, coverage, and performance results |
 
 ## Project layout
 
@@ -83,7 +85,7 @@ src/main/java/com/insurance/dashboard/
 ```
 
 Dependencies point strictly inward (`api → service → domain`, `infrastructure → domain`).
-See [DESIGN.md](DESIGN.md) for the full diagram and rationale.
+See [Architecture.md](Architecture.md) for the full diagram and rationale.
 
 ## Tooling
 
