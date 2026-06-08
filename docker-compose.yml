@@ -1,7 +1,6 @@
 # Runs the app together with PostgreSQL.
 #   docker compose up --build
-# Then seed sample data (tables are created by the app on first start):
-#   docker compose exec -T db psql -U postgres -d insuranceDB < src/main/resources/data.sql
+# Flyway creates the schema and seeds sample data automatically on startup.
 # App: http://localhost:8081/api/v1/policies
 
 services:

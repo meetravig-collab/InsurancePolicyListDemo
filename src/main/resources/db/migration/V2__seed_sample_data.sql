@@ -1,17 +1,12 @@
--- ============================================================================
--- Seed: 220 realistic insurance policy records (PostgreSQL)
--- Covers all status values, lines of business, APAC regions, currencies,
--- a realistic spread of effective/expiry dates and premium amounts (1k - 5M).
--- Safe to re-run: truncates first. Requires PostgreSQL 13+ (gen_random_uuid()).
--- ============================================================================
-
-TRUNCATE TABLE policies;
+-- Seed 220 realistic policies covering all statuses, lines of business, APAC regions,
+-- currencies, and a spread of dates and premiums (1,000 - 5,000,000).
+-- Requires PostgreSQL 13+ (gen_random_uuid()).
 
 WITH base AS (
     SELECT
         seq,
-        (DATE '2022-01-01' + ((random() * 1300)::int))            AS eff,
-        (1 + (random() * 2)::int)                                  AS term_years  -- 1..3 year terms
+        (DATE '2022-01-01' + ((random() * 1300)::int)) AS eff,
+        (1 + (random() * 2)::int)                        AS term_years  -- 1..3 year terms
     FROM generate_series(1, 220) AS seq
 )
 INSERT INTO policies (

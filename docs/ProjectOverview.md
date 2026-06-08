@@ -32,11 +32,10 @@ and a bulk review-flagging action.
 
 ```bash
 # Prerequisites: Java 17+, Maven 3.9+, PostgreSQL 13+ with a database named insuranceDB
-mvn spring-boot:run                                             # http://localhost:8081
-psql -U postgres -d insuranceDB -f src/main/resources/data.sql  # seed 220 sample policies
+mvn spring-boot:run        # http://localhost:8081
 ```
-
-Then browse `http://localhost:8081/swagger-ui/index.html` or:
+Flyway creates the schema and seeds 220 sample policies automatically on startup — no
+manual seeding step. Then browse `http://localhost:8081/swagger-ui/index.html` or:
 ```bash
 curl "http://localhost:8081/api/v1/policies?status=ACTIVE&region=JAPAN"
 ```
@@ -47,8 +46,7 @@ curl "http://localhost:8081/api/v1/policies?status=ACTIVE&region=JAPAN"
 ## Run with Docker
 
 ```bash
-docker compose up --build
-docker compose exec -T db psql -U postgres -d insuranceDB < src/main/resources/data.sql
+docker compose up --build   # Flyway migrates + seeds automatically
 ```
 A published image is pushed to GHCR on every push to `master`/`dev`:
 `ghcr.io/meetravig-collab/insurancepolicylistdemo:latest`. See [TechStack.md](TechStack.md)

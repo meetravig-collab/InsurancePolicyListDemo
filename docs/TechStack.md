@@ -19,6 +19,7 @@
 | Technology | Purpose |
 |---|---|
 | `spring-boot-starter-data-jpa` | ORM (Hibernate), repositories, `Specification` filtering |
+| Flyway (`flyway-core` + `flyway-database-postgresql`) | Versioned schema migrations & seed (`db/migration/V*.sql`); Hibernate runs `ddl-auto=validate` |
 | PostgreSQL (13+) | Relational store; UUID keys via `gen_random_uuid()` |
 | `postgresql` JDBC driver | Database connectivity |
 

@@ -26,21 +26,20 @@ Java 17 · Spring Boot 3.3 · Spring Data JPA · PostgreSQL · Caffeine cache ·
 
 ```bash
 # 1. Ensure PostgreSQL is running and the insuranceDB database exists
-# 2. Seed sample data (220 records)
-psql -U postgres -d insuranceDB -f src/main/resources/data.sql
-# 3. Run
+# 2. Run — Flyway creates the schema and seeds 220 sample policies on startup
 mvn spring-boot:run        # http://localhost:8081
 ```
+
+The schema and sample data are managed by **Flyway** (`src/main/resources/db/migration`),
+applied automatically on startup — no manual seeding step.
 
 Full setup, configuration, and API reference: see **[docs/ProjectOverview.md](docs/ProjectOverview.md)**.
 
 ## Run with Docker
 
 ```bash
-# App + PostgreSQL together
+# App + PostgreSQL together (Flyway migrates + seeds automatically)
 docker compose up --build
-# Seed sample data (tables are created on first start)
-docker compose exec -T db psql -U postgres -d insuranceDB < src/main/resources/data.sql
 ```
 
 `Dockerfile` is multi-stage (builds the jar inside the container) — use it in CI and

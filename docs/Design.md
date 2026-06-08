@@ -86,6 +86,14 @@ Adding a new filter means adding a criterion + one line — existing criteria ar
 (Open/Closed). It also handles all-optional filtering and avoids the PostgreSQL
 `lower(bytea)` null-type inference issue a hand-written JPQL `LIKE` hits.
 
+### Schema migrations (Flyway)
+The schema and sample data are version-controlled as Flyway migrations in
+`src/main/resources/db/migration` — `V1__init.sql` (schema) and `V2__seed_sample_data.sql`
+(220 rows), applied automatically on startup and tracked in `flyway_schema_history`.
+Hibernate runs `ddl-auto=validate` — it only checks the entity mapping matches the
+Flyway-built schema and never alters it. This makes the schema reproducible and removes
+the risk of `ddl-auto=update` silently changing tables.
+
 ### Caching of frequently accessed reads
 Caffeine-backed caches via the Spring Cache abstraction:
 
