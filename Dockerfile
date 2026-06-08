@@ -7,7 +7,7 @@ COPY src ./src
 RUN mvn -B clean package -DskipTests
 
 # ---- Runtime stage: slim JRE with just the jar ----
-FROM eclipse-temurin:17-jre
+FROM eclipse-temurin:25-jre
 WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8081
