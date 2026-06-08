@@ -19,7 +19,7 @@ SpringDoc serves live docs at `/swagger-ui.html` when the app is running.
 
 ## Tech stack
 
-Java 17 · Spring Boot 3.3 · Spring Data JPA · PostgreSQL · Gatling · Maven
+Java 17 · Spring Boot 3.3 · Spring Data JPA · PostgreSQL · Caffeine cache · SpringDoc/OpenAPI · Docker · Gatling · Maven
 
 ## Quick start
 
@@ -54,7 +54,7 @@ docker run -p 8081:8081 -e DB_URL=jdbc:postgresql://host.docker.internal:5432/in
 ```
 
 A published image is built and pushed to **GitHub Container Registry** on every push to
-`master` by [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml):
+`master` or `dev` by [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml):
 
 ```bash
 docker pull ghcr.io/meetravig-collab/insurancepolicylistdemo:latest
