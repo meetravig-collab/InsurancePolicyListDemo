@@ -3,9 +3,13 @@ package com.insurance.dashboard.api.mapper;
 import com.insurance.dashboard.api.dto.response.PolicySummaryResponse;
 import com.insurance.dashboard.api.dto.response.PolicySummaryStats;
 import com.insurance.dashboard.domain.model.Policy;
+import com.insurance.dashboard.domain.query.PageQuery;
+import com.insurance.dashboard.domain.query.SortDirection;
 import com.insurance.dashboard.service.PolicySummary;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -54,6 +58,14 @@ public class PolicyMapperImpl implements PolicyMapper {
                 .totalPremiumByLineOfBusiness(summary.totalPremiumByLineOfBusiness())
                 .expiringSoonCount(summary.expiringSoonCount())
                 .build();
+    }
+
+    @Override
+    public PageQuery toPageQuery(Pageable pageable) {
+        Sort.Order order = pageable.getSort().stream().findFirst().orElse(null);
+        String sortField = order != null ? order.getProperty() : "effectiveDate";
+        SortDirection direction = (order != null && order.isAscending()) ? SortDirection.ASC : SortDirection.DESC;
+        return new PageQuery(pageable.getPageNumber(), pageable.getPageSize(), sortField, direction);
     }
 
     private boolean isExpiringSoon(LocalDate expiryDate) {

@@ -24,7 +24,7 @@ and a bulk review-flagging action.
 - **Computed `isExpiringSoon`** flag (configurable warning window).
 - **Aggregated summary** — counts by status, total premium by line of business, expiring-soon count.
 - **Caching** of hot reads (Caffeine) with TTL + event-based invalidation.
-- **Contract-first API** — [`openapi.yaml`](openapi.yaml) is the source of truth; Swagger UI at `/swagger-ui/index.html`.
+- **Contract-first API** — [`openapi.yaml`](../src/main/resources/static/openapi.yaml) is the source of truth; Swagger UI at `/swagger-ui/index.html`.
 - **Safe errors** — structured 404 / 400 / 503 responses, never leaking stack traces.
 - **Performance** — list & detail p95 < 300ms under 50 concurrent sessions (Gatling-gated).
 

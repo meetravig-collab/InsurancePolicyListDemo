@@ -29,8 +29,8 @@ isExpiringSoon = expiryDate ≥ today AND expiryDate < today + POLICY_EXPIRY_WAR
 
 ## API contract
 
-Contract-first: [`openapi.yaml`](openapi.yaml) is the source of truth; Swagger UI at
-`/swagger-ui/index.html`.
+Contract-first: [`openapi.yaml`](../src/main/resources/static/openapi.yaml) is the source of
+truth; Swagger UI at `/swagger-ui/index.html`.
 
 ### `GET /api/v1/policies` — parameters
 | Parameter | Default | Allowed / format |

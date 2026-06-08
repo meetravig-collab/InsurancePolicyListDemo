@@ -9,10 +9,8 @@ import com.insurance.dashboard.domain.model.Policy;
 import com.insurance.dashboard.domain.model.Policy.LineOfBusiness;
 import com.insurance.dashboard.domain.model.Policy.PolicyStatus;
 import com.insurance.dashboard.domain.model.Policy.Region;
-import com.insurance.dashboard.domain.query.PageQuery;
 import com.insurance.dashboard.domain.query.PageResult;
 import com.insurance.dashboard.domain.query.PolicyFilter;
-import com.insurance.dashboard.domain.query.SortDirection;
 import com.insurance.dashboard.service.PolicyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -52,11 +50,10 @@ public class PolicyController {
         log.debug("GET /api/v1/policies - status={}, region={}, lob={}, search={}", status, region, lineOfBusiness, search);
 
         PolicyFilter filter = new PolicyFilter(status, region, lineOfBusiness, effectiveDateFrom, effectiveDateTo, search);
-        PageResult<Policy> result = policyService.getPolicies(filter, toPageQuery(pageable));
+        PageResult<Policy> result = policyService.getPolicies(filter, policyMapper.toPageQuery(pageable));
 
         List<PolicySummaryResponse> content = result.content().stream().map(policyMapper::toResponse).toList();
-        Page<PolicySummaryResponse> body = new PageImpl<>(content, pageable, result.totalElements());
-        return ResponseEntity.ok(body);
+        return ResponseEntity.ok(new PageImpl<>(content, pageable, result.totalElements()));
     }
 
     @GetMapping("/{id}")
@@ -77,12 +74,5 @@ public class PolicyController {
     public ResponseEntity<PolicySummaryStats> getSummaryStats() {
         log.debug("GET /api/v1/policies/summary");
         return ResponseEntity.ok(policyMapper.toStats(policyService.getSummary()));
-    }
-
-    private static PageQuery toPageQuery(Pageable pageable) {
-        Sort.Order order = pageable.getSort().stream().findFirst().orElse(null);
-        String sortField = order != null ? order.getProperty() : "effectiveDate";
-        SortDirection direction = (order != null && order.isAscending()) ? SortDirection.ASC : SortDirection.DESC;
-        return new PageQuery(pageable.getPageNumber(), pageable.getPageSize(), sortField, direction);
     }
 }

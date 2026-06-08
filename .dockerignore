@@ -8,5 +8,4 @@ target/**
 *.log
 HELP.md
 *.md
-PolicyOverviewDashboard.postman_collection.json
-InsurancePolicyHoldersDashboard.postman_collection.json
+docs/

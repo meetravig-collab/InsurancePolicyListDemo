@@ -14,8 +14,9 @@ Base path `/api/v1/policies`:
 | `PATCH` | `/api/v1/policies/flag` | Bulk flag policies for review |
 | `GET` | `/api/v1/policies/summary` | Counts by status, total premium by line of business, expiring-soon count |
 
-The API contract lives in [`openapi.yaml`](openapi.yaml) (the single source of truth);
-SpringDoc serves live docs at `/swagger-ui.html` when the app is running.
+The API contract lives in [`openapi.yaml`](src/main/resources/static/openapi.yaml) (the
+single source of truth); SpringDoc serves it via Swagger UI at `/swagger-ui/index.html`
+when the app is running.
 
 ## Tech stack
 
@@ -31,7 +32,7 @@ psql -U postgres -d insuranceDB -f src/main/resources/data.sql
 mvn spring-boot:run        # http://localhost:8081
 ```
 
-Full setup, configuration, and API reference: see **[ProjectOverview.md](ProjectOverview.md)**.
+Full setup, configuration, and API reference: see **[docs/ProjectOverview.md](docs/ProjectOverview.md)**.
 
 ## Run with Docker
 
@@ -67,11 +68,11 @@ docker run -p 8081:8081 \
 
 | Document | What's inside |
 |---|---|
-| **[ProjectOverview.md](ProjectOverview.md)** | What the service does, endpoints, features, quick start |
-| **[TechStack.md](TechStack.md)** | Technologies used and why; build, container & CI tooling |
-| **[Architecture.md](Architecture.md)** | Hexagonal layering, dependency rule, package structure, SOLID |
-| **[Design.md](Design.md)** | Domain schema, API contract, caching & key design decisions |
-| **[Testing.md](Testing.md)** | Test strategy, layers, coverage, and performance results |
+| **[docs/ProjectOverview.md](docs/ProjectOverview.md)** | What the service does, endpoints, features, quick start |
+| **[docs/TechStack.md](docs/TechStack.md)** | Technologies used and why; build, container & CI tooling |
+| **[docs/Architecture.md](docs/Architecture.md)** | Hexagonal layering, dependency rule, package structure, SOLID |
+| **[docs/Design.md](docs/Design.md)** | Domain schema, API contract, caching & key design decisions |
+| **[docs/Testing.md](docs/Testing.md)** | Test strategy, layers, coverage, and performance results |
 
 ## Project layout
 
@@ -85,9 +86,9 @@ src/main/java/com/insurance/dashboard/
 ```
 
 Dependencies point strictly inward (`api → service → domain`, `infrastructure → domain`).
-See [Architecture.md](Architecture.md) for the full diagram and rationale.
+See [docs/Architecture.md](docs/Architecture.md) for the full diagram and rationale.
 
 ## Tooling
 
-- **Postman:** import [`PolicyOverviewDashboard.postman_collection.json`](PolicyOverviewDashboard.postman_collection.json) — a self-contained collection with test assertions (runnable headless via `newman`).
+- **API explorer:** Swagger UI at `http://localhost:8081/swagger-ui/index.html` (serves the committed [`openapi.yaml`](src/main/resources/static/openapi.yaml)) — try every endpoint live.
 - **Load test:** `mvn gatling:test` (app must be running).
