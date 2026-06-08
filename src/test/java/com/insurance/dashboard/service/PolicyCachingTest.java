@@ -1,5 +1,6 @@
 package com.insurance.dashboard.service;
 
+import com.insurance.dashboard.AbstractPostgresIT;
 import com.insurance.dashboard.domain.model.Policy;
 import com.insurance.dashboard.domain.model.Policy.PolicyStatus;
 import com.insurance.dashboard.domain.port.PolicyRepositoryPort;
@@ -27,7 +28,7 @@ import static org.mockito.Mockito.*;
  * port, then asserts how many times the port is actually called.
  */
 @SpringBootTest(properties = {"cache.ttl-seconds=60", "cache.max-size=1000"})
-class PolicyCachingTest {
+class PolicyCachingTest extends AbstractPostgresIT {
 
     @Autowired private PolicyService policyService;
     @Autowired private CacheManager cacheManager;

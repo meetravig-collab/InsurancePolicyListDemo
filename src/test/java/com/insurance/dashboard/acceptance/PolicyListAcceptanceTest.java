@@ -1,5 +1,6 @@
 package com.insurance.dashboard.acceptance;
 
+import com.insurance.dashboard.AbstractPostgresIT;
 import com.insurance.dashboard.domain.model.Policy;
 import com.insurance.dashboard.infrastructure.persistence.entity.PolicyEntity;
 import com.insurance.dashboard.infrastructure.persistence.repository.PolicyJpaRepository;
@@ -25,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Transactional
 @DisplayName("Policy List - Acceptance")
-class PolicyListAcceptanceTest {
+class PolicyListAcceptanceTest extends AbstractPostgresIT {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private PolicyJpaRepository policyRepository;
@@ -250,5 +251,43 @@ class PolicyListAcceptanceTest {
                 .andExpect(jsonPath("$.countsByStatus").isMap())
                 .andExpect(jsonPath("$.totalPremiumByLineOfBusiness").isMap())
                 .andExpect(jsonPath("$.expiringSoonCount").isNumber());
+    }
+
+    // --- edge / negative cases ---
+
+    @Test
+    @DisplayName("Invalid status enum value returns 400 with a readable message")
+    void givenInvalidStatus_thenReturns400() throws Exception {
+        mockMvc.perform(get("/api/v1/policies?status=NOT_A_STATUS"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message", containsString("status")));
+    }
+
+    @Test
+    @DisplayName("Malformed UUID in path returns 400, not 500")
+    void givenMalformedId_thenReturns400() throws Exception {
+        mockMvc.perform(get("/api/v1/policies/not-a-uuid"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400));
+    }
+
+    @Test
+    @DisplayName("Filters that match nothing return an empty page (200), not an error")
+    void givenNoMatches_thenEmptyPage() throws Exception {
+        mockMvc.perform(get("/api/v1/policies?search=zzz-no-such-policy-zzz&page=0&size=10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content", hasSize(0)))
+                .andExpect(jsonPath("$.totalElements").value(0));
+    }
+
+    @Test
+    @DisplayName("Flagging an unknown id is a no-op (flaggedCount 0), not an error")
+    void givenUnknownIdToFlag_thenZeroFlagged() throws Exception {
+        mockMvc.perform(patch("/api/v1/policies/flag")
+                        .contentType("application/json")
+                        .content("{\"policyIds\":[\"" + UUID.randomUUID() + "\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.flaggedCount").value(0));
     }
 }

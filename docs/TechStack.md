@@ -40,6 +40,8 @@
 |---|---|
 | JUnit 5 + Mockito | Unit tests (service against a mocked port) |
 | Spring Test / MockMvc | Controller slice & full-stack acceptance tests |
+| Testcontainers (`postgresql`, `junit-jupiter`) | Hermetic PostgreSQL for integration tests — no manually-provisioned DB |
+| JaCoCo | Code-coverage report (`mvn verify` → `target/site/jacoco`) |
 | Gatling (Java DSL) | Load testing — p95 gate for list & detail endpoints |
 
 ## Build, container & CI/CD

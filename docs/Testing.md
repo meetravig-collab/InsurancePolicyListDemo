@@ -1,14 +1,15 @@
 # Testing — Policy Overview Dashboard
 
-The hexagonal design makes each layer independently testable: the service is tested against
-a mocked **port**, the HTTP layer against the **real mapper**, and the full stack against
-**real PostgreSQL**. A Gatling load test gates performance.
+The hexagonal design makes each layer independently testable: the service against a mocked
+**port**, the HTTP layer against the **real mapper**, and the full stack against a
+**Testcontainers PostgreSQL** (a throwaway container — no manually-provisioned DB). A
+Gatling load test gates performance, and CI runs the whole suite with coverage.
 
 ```
 ┌──────────────────────────────────────────────┐
 │  Performance (Gatling)   p95 < 300ms @ 50 sessions (list + detail)
 ├──────────────────────────────────────────────┤
-│  Acceptance (SpringBootTest + PostgreSQL)     full stack, real DB, auto-rollback
+│  Acceptance (SpringBootTest + Testcontainers) full stack, real Postgres, auto-rollback
 ├──────────────────────────────────────────────┤
 │  Controller slice (WebMvcTest + real mapper)  HTTP contract, mapping, errors
 ├──────────────────────────────────────────────┤
@@ -20,11 +21,24 @@ a mocked **port**, the HTTP layer against the **real mapper**, and the full stac
 ## Running
 
 ```bash
-mvn test                      # all 34 tests (needs PostgreSQL running)
+mvn verify                    # all 38 tests + JaCoCo coverage report (target/site/jacoco)
 mvn test -Dtest=PolicyServiceTest
 mvn spring-boot:run && mvn gatling:test    # performance (app must be running)
 ```
-> Windows behind a TLS proxy: `set MAVEN_OPTS=-Djavax.net.ssl.trustStoreType=Windows-ROOT`.
+- **Docker must be running** — the acceptance/caching tests start a PostgreSQL container via
+  Testcontainers (no local DB setup needed). On CI (Linux) this is auto-detected.
+- Windows + Docker Desktop: Testcontainers needs `DOCKER_HOST` pointed at the Docker Desktop
+  pipe (`npipe:////./pipe/dockerDesktopLinuxEngine`) or a `~/.testcontainers.properties` with
+  `docker.host=...`. CI needs none of this.
+- Windows behind a TLS proxy: `set MAVEN_OPTS=-Djavax.net.ssl.trustStoreType=Windows-ROOT`.
+
+## CI
+
+`.github/workflows/docker-publish.yml` runs on every push and PR to `master`/`dev`:
+1. **test** job — `mvn verify` on an Ubuntu runner (Testcontainers spins up PostgreSQL),
+   uploads the JaCoCo report as an artifact.
+2. **build-and-push** job — `needs: test`, runs only on push: the GHCR image is **published
+   only when the suite passes**, so a broken commit can't ship an image.
 
 ## 1. Service unit — `PolicyServiceTest` (5)
 JUnit 5 + Mockito; `PolicyServiceImpl` built directly with the **`PolicyRepositoryPort`
@@ -36,10 +50,11 @@ mocked** — no Spring, no DB. Asserts on domain types (`Policy`, `PageResult`, 
 | `getPolicyById_returnsPolicy_whenFound` | domain `Policy` returned |
 | `getPolicyById_throwsNotFound_whenMissing` | `PolicyNotFoundException` on empty `Optional` |
 | `flagPoliciesForReview_returnsUpdatedCount` | delegates to `port.flagForReview` |
-| `getSummary_formatsAggregatesFromPort` | title-case status, display-name LOB (`A&H`), expiring count |
+| `getSummary_passesThroughEnumKeyedAggregatesFromPort` | service returns enum-keyed aggregates unchanged (formatting is the mapper's job) |
 
 ## 2. Caching — `PolicyCachingTest` (3)
-`@SpringBootTest` (cache proxies active) with the port mocked; asserts port call counts.
+`@SpringBootTest` (cache proxies active, Testcontainers Postgres) with the port mocked;
+asserts port call counts.
 
 | Test | Verifies |
 |---|---|
@@ -53,13 +68,16 @@ verifies domain→DTO + JSON; filter binding checked with an `ArgumentCaptor<Pol
 Covers: list payload & fields, status/region filter capture, get-by-id, flag (200),
 flag empty → 400, summary.
 
-## 4. Acceptance (full stack) — real PostgreSQL, `@Transactional` rollback
-Run controller → service → port → adapter → JPA → PostgreSQL and back. Each test seeds its
-own rows via `PolicyJpaRepository`/`PolicyEntity` and rolls back.
+## 4. Acceptance (full stack) — Testcontainers PostgreSQL, `@Transactional` rollback
+Run controller → service → port → adapter → JPA → PostgreSQL and back, against a container
+started by `AbstractPostgresIT` (Flyway builds + seeds it). Each test seeds its own rows via
+`PolicyJpaRepository`/`PolicyEntity` and rolls back.
 
-**`PolicyListAcceptanceTest` (17)** — pagination & metadata, sort, all schema fields,
-status formatting (`Active`/`Cancelled`), LOB display name, region & effective-date filters,
-search on name & underwriter, get-by-id, 404, expiring-soon, bulk flag + verify, empty-flag 400, summary.
+**`PolicyListAcceptanceTest` (21)** — pagination & metadata, sort, all schema fields, status
+formatting (`Active`/`Cancelled`), LOB display name, region & effective-date filters, search
+on name & underwriter, get-by-id, 404, expiring-soon, bulk flag + verify, empty-flag 400,
+summary. **Edge/negative cases:** invalid enum param → 400, malformed UUID → 400 (not 500),
+no-match filters → empty page (200), flag unknown id → no-op (`flaggedCount` 0).
 
 **`PolicyDatabaseFailureAcceptanceTest` (2)** — `@WebMvcTest` with the service stubbed to throw
 `CannotCreateTransactionException`: returns `503` with a readable message and **no** stack trace.
@@ -74,22 +92,24 @@ Each session lists policies, captures a real UUID, then fetches that policy's de
 | Endpoints | `GET /api/v1/policies` and `GET /api/v1/policies/{id}` |
 | Hard gates | per-endpoint p95 < 300ms; success > 99% |
 
-**Observed (local PostgreSQL, ~17k requests, 0 errors):** list p95 158ms, detail p95 83ms — both well under target.
+**Observed (~15k requests, 0 errors):** list p95 ~170ms, detail p95 ~90ms — both well under target.
 
 ## Summary
 
 | Test class | Tests | Type | Database |
 |---|---|---|---|
 | `PolicyServiceTest` | 5 | Service unit (port mocked) | None |
-| `PolicyCachingTest` | 3 | Caching (Spring ctx, port mocked) | None |
+| `PolicyCachingTest` | 3 | Caching (Spring ctx, port mocked) | Testcontainers |
 | `PolicyControllerTest` | 7 | Controller slice (real mapper) | None |
-| `PolicyListAcceptanceTest` | 17 | Acceptance (full stack) | Real PostgreSQL |
+| `PolicyListAcceptanceTest` | 21 | Acceptance (full stack) | Testcontainers |
 | `PolicyDatabaseFailureAcceptanceTest` | 2 | Acceptance (mocked failure) | None |
-| **Total** | **34** | | |
+| **Total** | **38** | | |
 | `PolicyEndpointSimulation` | 1 sim | Performance | Real PostgreSQL |
+
+Coverage: JaCoCo runs on `mvn verify` → `target/site/jacoco/index.html` (uploaded as a CI artifact).
 
 ## Test data isolation
 Acceptance tests are `@Transactional`, so each method's inserts roll back automatically — no
 cleanup scripts, no `@DirtiesContext`. Tests target their own rows with `ACC-*` prefixes and
 JSONPath filters, and scope magnitude-sensitive assertions (e.g. the premium-sort test
-searches `ACC-0`) so the 220-row seed can't interfere.
+searches `ACC-0`) so the Flyway-seeded 220 rows can't interfere.
