@@ -219,6 +219,29 @@ inference problem that a hand-written JPQL `LIKE` with nullable params hits.
 `PolicyServiceImpl` is `@Transactional(readOnly = true)`; only `flagPoliciesForReview`
 is a read-write transaction (a bulk `@Modifying` update).
 
+### Caching of frequently accessed reads
+A Caffeine-backed cache (Spring Cache abstraction, `@EnableCaching`) fronts the three
+hot reads, applied as annotations on the service:
+
+| Cache | Method | Key |
+|---|---|---|
+| `policyListings` | `getPolicies(filter, page)` | filter + page query (records → value-based key) |
+| `policyById` | `getPolicyById(id)` | the UUID |
+| `policySummary` | `getSummary()` | single entry |
+
+**Invalidation strategy — two layers:**
+1. **Time-based (TTL).** Every entry expires `expireAfterWrite` `cache.ttl-seconds`
+   (default 60s), with a bounded `cache.max-size` (LRU). This caps staleness even for
+   out-of-band DB changes (e.g. the seed script or a future writer).
+2. **Event-based.** `flagPoliciesForReview` mutates `flaggedForReview`, which is visible
+   in listings and detail, so it `@CacheEvict`s `policyListings` and `policyById`
+   immediately (`allEntries = true`). Summary is unaffected by flagging and relies on TTL.
+
+Caffeine is a local single-node cache appropriate for this BFF. Because caching is wired
+through the Spring Cache abstraction, the `CacheManager` bean can be swapped for a
+distributed provider (e.g. Redis) for multi-instance deployments **without changing the
+service-layer annotations**.
+
 ### Configurable expiry window
 The expiry warning window is read from `${policy.expiry.warning-days:30}` and used by the
 mapper (`isExpiringSoon`) and the summary aggregation.
@@ -233,3 +256,5 @@ All environment-specific values are externalised with local defaults:
 | `spring.datasource.password` | `DB_PASSWORD` | `postgres` |
 | `server.port` | `PORT` | `8081` |
 | `policy.expiry.warning-days` | `POLICY_EXPIRY_WARNING_DAYS` | `30` |
+| `cache.ttl-seconds` | `CACHE_TTL_SECONDS` | `60` |
+| `cache.max-size` | `CACHE_MAX_SIZE` | `1000` |

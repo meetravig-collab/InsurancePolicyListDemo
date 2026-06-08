@@ -58,6 +58,18 @@ Because the service now deals in domain types, the tests assert on `Policy` / `P
 | `flagPoliciesForReview_returnsUpdatedCount` | delegates to `port.flagForReview`, returns count |
 | `getSummary_formatsAggregatesFromPort` | enum→title-case status, enum→display-name LOB (e.g. `A&H`), expiring-soon count |
 
+### Caching tests — PolicyCachingTest (3 tests)
+
+**`src/test/java/.../service/PolicyCachingTest.java`** — `@SpringBootTest` (so the
+`@Cacheable`/`@CacheEvict` proxies are active) with the persistence **port mocked**, then
+asserts how often the port is actually hit.
+
+| Test | Asserts |
+|---|---|
+| `listings_areCached_soSecondCallSkipsThePort` | two identical `getPolicies` calls → port hit once |
+| `summary_isCached_soSecondCallSkipsThePort` | two `getSummary` calls → port hit once |
+| `flagging_evictsListingsCache_soNextListHitsThePortAgain` | after `flagPoliciesForReview`, the listings cache is evicted → port hit again |
+
 ---
 
 ## 2. Controller Slice Tests
@@ -156,10 +168,11 @@ The assertions are per-endpoint (`details("GET list")` / `details("GET detail")`
 | Test class | Tests | Type | Database |
 |---|---|---|---|
 | `PolicyServiceTest` | 5 | Service unit (port mocked) | None |
+| `PolicyCachingTest` | 3 | Caching (Spring context, port mocked) | None |
 | `PolicyControllerTest` | 7 | Controller slice (real mapper, service mocked) | None |
 | `PolicyListAcceptanceTest` | 17 | Acceptance (full stack) | Real PostgreSQL |
 | `PolicyDatabaseFailureAcceptanceTest` | 2 | Acceptance (mocked failure) | None |
-| **Total** | **31** | | |
+| **Total** | **34** | | |
 | `PolicyEndpointSimulation` | 1 simulation | Performance | Real PostgreSQL |
 
 ---

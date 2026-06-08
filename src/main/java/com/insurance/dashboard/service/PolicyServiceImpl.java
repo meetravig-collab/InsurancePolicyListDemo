@@ -1,6 +1,7 @@
 package com.insurance.dashboard.service;
 
 import com.insurance.dashboard.common.exception.PolicyNotFoundException;
+import com.insurance.dashboard.config.CacheNames;
 import com.insurance.dashboard.domain.model.Policy;
 import com.insurance.dashboard.domain.model.Policy.LineOfBusiness;
 import com.insurance.dashboard.domain.model.Policy.PolicyStatus;
@@ -10,6 +11,9 @@ import com.insurance.dashboard.domain.query.PageResult;
 import com.insurance.dashboard.domain.query.PolicyFilter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,30 +39,42 @@ public class PolicyServiceImpl implements PolicyService {
     }
 
     @Override
+    @Cacheable(CacheNames.POLICY_LISTINGS)
     public PageResult<Policy> getPolicies(PolicyFilter filter, PageQuery page) {
-        log.debug("Fetching policies - filter={}, page={}", filter, page.page());
+        log.debug("Fetching policies (cache miss) - filter={}, page={}", filter, page.page());
         return policyRepository.findAll(filter, page);
     }
 
     @Override
+    @Cacheable(value = CacheNames.POLICY_BY_ID, key = "#id")
     public Policy getPolicyById(UUID id) {
-        log.debug("Fetching policy id={}", id);
+        log.debug("Fetching policy id={} (cache miss)", id);
         return policyRepository.findById(id)
                 .orElseThrow(() -> new PolicyNotFoundException(id));
     }
 
+    /**
+     * Mutates flaggedForReview, which is visible in listings and detail responses,
+     * so both caches are evicted immediately. Summary is unaffected by flagging and
+     * relies on its TTL.
+     */
     @Override
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = CacheNames.POLICY_LISTINGS, allEntries = true),
+            @CacheEvict(value = CacheNames.POLICY_BY_ID, allEntries = true)
+    })
     public int flagPoliciesForReview(List<UUID> policyIds) {
         log.info("Flagging {} policies for review: {}", policyIds.size(), policyIds);
         int flaggedCount = policyRepository.flagForReview(policyIds);
-        log.info("Successfully flagged {} policies", flaggedCount);
+        log.info("Successfully flagged {} policies (listings + detail caches evicted)", flaggedCount);
         return flaggedCount;
     }
 
     @Override
+    @Cacheable(CacheNames.POLICY_SUMMARY)
     public PolicySummary getSummary() {
-        log.debug("Fetching policy summary stats");
+        log.debug("Fetching policy summary stats (cache miss)");
 
         Map<String, Long> countsByStatus = new LinkedHashMap<>();
         policyRepository.countByStatus()
