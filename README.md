@@ -42,6 +42,17 @@ docker compose up --build
 docker compose exec -T db psql -U postgres -d insuranceDB < src/main/resources/data.sql
 ```
 
+`Dockerfile` is multi-stage (builds the jar inside the container) — use it in CI and
+proxy-free environments. **Behind a TLS-intercepting proxy** (where the in-container Maven
+download fails with a PKIX error), build the jar on the host first and use
+[`Dockerfile.local`](Dockerfile.local):
+
+```bash
+mvn clean package -DskipTests
+docker build -f Dockerfile.local -t insurancepolicylistdemo:local .
+docker run -p 8081:8081 -e DB_URL=jdbc:postgresql://host.docker.internal:5432/insuranceDB insurancepolicylistdemo:local
+```
+
 A published image is built and pushed to **GitHub Container Registry** on every push to
 `master` by [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml):
 

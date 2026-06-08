@@ -1,4 +1,6 @@
-target/
+# Ignore build output, but keep the packaged jar so Dockerfile.local can copy it.
+target/**
+!target/*.jar
 .git/
 .github/
 .idea/

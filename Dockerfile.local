@@ -1,0 +1,22 @@
+# Runtime-only image built from a jar packaged on the HOST.
+#
+# Use this for LOCAL builds behind a TLS-intercepting proxy, where the multi-stage
+# Dockerfile's in-container Maven download cannot reach Maven Central
+# (PKIX "unable to find valid certification path"). Building the jar on the host
+# first sidesteps that — no Maven runs inside the container.
+#
+# Usage (PowerShell):
+#   $env:MAVEN_OPTS = '-Djavax.net.ssl.trustStoreType=Windows-ROOT'
+#   mvn clean package -DskipTests
+#   docker build -f Dockerfile.local -t insurancepolicylistdemo:local .
+#   docker run -p 8081:8081 `
+#     -e DB_URL="jdbc:postgresql://host.docker.internal:5432/insuranceDB" `
+#     insurancepolicylistdemo:local
+#
+# For CI / proxy-free environments use the standard multi-stage ./Dockerfile instead.
+
+FROM eclipse-temurin:17-jre
+WORKDIR /app
+COPY target/*.jar app.jar
+EXPOSE 8081
+ENTRYPOINT ["java", "-jar", "/app/app.jar"]
