@@ -33,6 +33,25 @@ mvn spring-boot:run        # http://localhost:8081
 
 Full setup, configuration, and API reference: see **[DEVELOPMENT.md](DEVELOPMENT.md)**.
 
+## Run with Docker
+
+```bash
+# App + PostgreSQL together
+docker compose up --build
+# Seed sample data (tables are created on first start)
+docker compose exec -T db psql -U postgres -d insuranceDB < src/main/resources/data.sql
+```
+
+A published image is built and pushed to **GitHub Container Registry** on every push to
+`master` by [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml):
+
+```bash
+docker pull ghcr.io/meetravig-collab/insurancepolicylistdemo:latest
+docker run -p 8081:8081 \
+  -e DB_URL=jdbc:postgresql://host.docker.internal:5432/insuranceDB \
+  ghcr.io/meetravig-collab/insurancepolicylistdemo:latest
+```
+
 ## Documentation
 
 | Document | What's inside |

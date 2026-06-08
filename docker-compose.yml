@@ -1,0 +1,38 @@
+# Runs the app together with PostgreSQL.
+#   docker compose up --build
+# Then seed sample data (tables are created by the app on first start):
+#   docker compose exec -T db psql -U postgres -d insuranceDB < src/main/resources/data.sql
+# App: http://localhost:8081/api/v1/policies
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: insuranceDB
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d insuranceDB"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/insuranceDB
+      DB_USERNAME: postgres
+      DB_PASSWORD: postgres
+      PORT: "8081"
+    ports:
+      - "8081:8081"
+
+volumes:
+  pgdata:
