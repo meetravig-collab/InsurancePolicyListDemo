@@ -38,7 +38,7 @@ dependencies**; every dependency points inward.
         │    persistence/PolicySpecification            │  filter → Specification
         └───────────────────────────────────────────────┘
 
-Cross-cutting:  config/ (caching)   common/exception/ (error handling)
+Cross-cutting:  config/ (caching)   api/exception/ (HTTP error handling)   domain/exception/ (domain errors)
 ```
 
 ## The dependency rule
@@ -59,19 +59,20 @@ com.insurance.dashboard/
 │   ├── controller/PolicyController
 │   ├── dto/request/FlagPoliciesRequest
 │   ├── dto/response/PolicySummaryResponse, FlagPoliciesResponse, PolicySummaryStats
-│   └── mapper/PolicyMapper (+ PolicyMapperImpl)
+│   ├── mapper/PolicyMapper (+ PolicyMapperImpl)
+│   └── exception/GlobalExceptionHandler, ErrorResponse
 ├── service/            PolicyService (interface) + PolicyServiceImpl, PolicySummary
 ├── domain/             core — no framework deps
 │   ├── model/Policy    persistence-ignorant POJO + enums
 │   ├── port/PolicyRepositoryPort
-│   └── query/PolicyFilter, PageQuery, PageResult, SortDirection
+│   ├── query/PolicyFilter, PageQuery, PageResult, SortDirection
+│   └── exception/PolicyNotFoundException
 ├── infrastructure/persistence/
 │   ├── PolicyPersistenceAdapter          implements PolicyRepositoryPort
 │   ├── PolicySpecification               PolicyFilter → Specification<PolicyEntity>
 │   ├── entity/PolicyEntity (+ PolicyEntityMapper)
 │   └── repository/PolicyJpaRepository    Spring Data JPA + JpaSpecificationExecutor
 ├── config/             CacheConfig, CacheNames
-├── common/exception/   GlobalExceptionHandler, ErrorResponse, PolicyNotFoundException
 └── PolicyOverviewDashboardApplication.java
 ```
 

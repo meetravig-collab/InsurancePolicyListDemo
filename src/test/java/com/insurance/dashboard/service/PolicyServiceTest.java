@@ -1,6 +1,6 @@
 package com.insurance.dashboard.service;
 
-import com.insurance.dashboard.common.exception.PolicyNotFoundException;
+import com.insurance.dashboard.domain.exception.PolicyNotFoundException;
 import com.insurance.dashboard.domain.model.Policy;
 import com.insurance.dashboard.domain.model.Policy.LineOfBusiness;
 import com.insurance.dashboard.domain.model.Policy.PolicyStatus;

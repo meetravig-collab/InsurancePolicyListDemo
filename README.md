@@ -78,11 +78,10 @@ docker run -p 8081:8081 \
 
 ```
 src/main/java/com/insurance/dashboard/
-├── api/              inbound adapter — controller, DTOs, mapper
+├── api/              inbound adapter — controller, DTOs, mapper, exception handler
 ├── service/          application layer — use cases (depends only on the domain port)
-├── domain/           core — POJO model, port, query value objects (no framework deps)
-├── infrastructure/   outbound adapter — JPA entity, Spring Data repo, persistence adapter
-└── common/           cross-cutting — exception handling
+├── domain/           core — POJO model, port, query value objects, domain exceptions
+└── infrastructure/   outbound adapter — JPA entity, Spring Data repo, persistence adapter
 ```
 
 Dependencies point strictly inward (`api → service → domain`, `infrastructure → domain`).

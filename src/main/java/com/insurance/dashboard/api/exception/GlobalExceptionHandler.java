@@ -1,5 +1,6 @@
-package com.insurance.dashboard.common.exception;
+package com.insurance.dashboard.api.exception;
 
+import com.insurance.dashboard.domain.exception.PolicyNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,10 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+/**
+ * Translates exceptions into HTTP responses. This is an API-layer concern
+ * (@RestControllerAdvice), catching domain exceptions and mapping them to status codes.
+ */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
