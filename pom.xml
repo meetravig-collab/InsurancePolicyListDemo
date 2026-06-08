@@ -20,7 +20,7 @@
     <properties>
         <java.version>17</java.version>
         <gatling.version>3.13.1</gatling.version>
-        <gatling-maven-plugin.version>4.10.0</gatling-maven-plugin.version>
+        <gatling-maven-plugin.version>4.21.7</gatling-maven-plugin.version>
     </properties>
 
     <dependencies>
