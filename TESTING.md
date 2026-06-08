@@ -9,7 +9,7 @@ exercised through the real Spring context.
 
 ```
 ┌──────────────────────────────────────────────┐
-│  Performance (Gatling)                        │  NFR gate: p95 < 500ms @ 50 users
+│  Performance (Gatling)                        │  NFR gate: p95 < 300ms @ 50 sessions (list + detail)
 ├──────────────────────────────────────────────┤
 │  Acceptance (SpringBootTest + PostgreSQL)     │  full stack, real DB, auto-rollback
 ├──────────────────────────────────────────────┤
@@ -129,16 +129,25 @@ acquired) — validates the 503 contract without taking the database down.
 **`src/test/java/.../performance/PolicyEndpointSimulation.java`** — Gatling (Java DSL),
 run via `mvn gatling:test` against a running app.
 
+Each virtual session hits the **list** endpoint, captures a real policy UUID from the
+page, then fetches that policy's **detail** — so both read endpoints are measured under load.
+
 | Profile | Value |
 |---|---|
-| Load | 50 concurrent users (closed model) |
+| Load | 50 concurrent sessions (closed model) |
 | Duration | 30 s |
-| Endpoint | `GET /api/v1/policies?page=0&size=10` |
+| Endpoints | `GET /api/v1/policies` (list) and `GET /api/v1/policies/{id}` (detail) |
 
-**Hard gates:** p95 < 500 ms; success rate > 99%.
+**Hard gates (per requirement):** p95 < 300 ms **for both list and detail**; success rate > 99%.
+The assertions are per-endpoint (`details("GET list")` / `details("GET detail")`), not just global.
 
-**Observed (local PostgreSQL):** p95 169 ms, p99 215 ms, mean 115 ms, 100% success over
-12,589 requests — ~3× under the threshold.
+**Observed (local PostgreSQL, 50 concurrent sessions, 30s, 17,770 requests, 0 errors):**
+
+| Endpoint | p95 | Target |
+|---|---|---|
+| GET list | 158 ms | < 300 ms ✅ |
+| GET detail | 83 ms | < 300 ms ✅ |
+| Success rate | 100% | > 99% ✅ |
 
 ---
 
