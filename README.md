@@ -72,6 +72,7 @@ docker run -p 8081:8081 \
 | **[docs/Architecture.md](docs/Architecture.md)** | Hexagonal layering, dependency rule, package structure, SOLID |
 | **[docs/Design.md](docs/Design.md)** | Domain schema, API contract, caching & key design decisions |
 | **[docs/Testing.md](docs/Testing.md)** | Test strategy, layers, coverage, and performance results |
+| **[AI-WORKING-JOURNAL.md](AI-WORKING-JOURNAL.md)** | Process log — what the AI accepted, challenged, overrode, with reasoning |
 
 ## Project layout
 
