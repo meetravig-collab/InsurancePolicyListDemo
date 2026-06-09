@@ -94,6 +94,10 @@ Each session lists policies, captures a real UUID, then fetches that policy's de
 
 **Observed (~15k requests, 0 errors):** list p95 ~170ms, detail p95 ~90ms — both well under target.
 
+An equivalent **k6** script (`k6/load-test.js`, JavaScript) runs the same scenario with
+`p(95)<300` thresholds per endpoint — `k6 run k6/load-test.js`. Gatling is the in-build,
+CI-runnable gate; k6 is the lightweight alternative.
+
 ## Summary
 
 | Test class | Tests | Type | Database |

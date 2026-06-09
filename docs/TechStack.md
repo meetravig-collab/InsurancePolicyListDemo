@@ -42,7 +42,8 @@
 | Spring Test / MockMvc | Controller slice & full-stack acceptance tests |
 | Testcontainers (`postgresql`, `junit-jupiter`) | Hermetic PostgreSQL for integration tests — no manually-provisioned DB |
 | JaCoCo | Code-coverage report (`mvn verify` → `target/site/jacoco`) |
-| Gatling (Java DSL) | Load testing — p95 gate for list & detail endpoints |
+| Gatling (Java DSL) | Load testing — in-build p95 gate for list & detail endpoints (`mvn gatling:test`) |
+| k6 (JavaScript) | Alternative load test (`k6/load-test.js`) — same scenario & p95<300ms thresholds, run with the `k6` CLI |
 
 ## Build, container & CI/CD
 | Technology | Purpose |
