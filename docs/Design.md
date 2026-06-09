@@ -132,3 +132,11 @@ SLF4J/Logback logging to stdout: `INFO` for write operations, `DEBUG` for reads,
 `WARN` for client errors (404/400), `ERROR` (with stack trace) for data-access failures.
 Spring Boot Actuator exposes `/actuator/health` (with the PostgreSQL component) plus
 `liveness` and `readiness` probes for orchestrator health checks.
+
+### Logging & sensitive data
+Log statements emit only **non-sensitive identifiers** — UUIDs, policy numbers, and counts.
+The PII / sensitive fields (`policyholderName`, `premiumAmount`, `currency`, `underwriter`)
+are **never logged**. The free-text `search` parameter is also **not logged** (it can contain
+a policyholder name) — the controller logs `hasSearch=<bool>` and the service logs discrete
+filter fields (`status`/`region`/`lineOfBusiness`) rather than the whole filter. Error
+responses likewise never include stack traces or internal class names (see API contract).
