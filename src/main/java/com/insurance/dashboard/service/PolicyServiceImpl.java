@@ -37,7 +37,9 @@ public class PolicyServiceImpl implements PolicyService {
     @Override
     @Cacheable(CacheNames.POLICY_LISTINGS)
     public PageResult<Policy> getPolicies(PolicyFilter filter, PageQuery page) {
-        log.debug("Fetching policies (cache miss) - filter={}, page={}", filter, page.page());
+        // log discrete filter fields, not the whole filter — `search` may contain PII
+        log.debug("Fetching policies (cache miss) - status={}, region={}, lob={}, page={}",
+                filter.status(), filter.region(), filter.lineOfBusiness(), page.page());
         return policyRepository.findAll(filter, page);
     }
 

@@ -47,7 +47,9 @@ public class PolicyController {
             @RequestParam(required = false) String search,
             @PageableDefault(size = 10, sort = "effectiveDate", direction = Sort.Direction.DESC) Pageable pageable) {
 
-        log.debug("GET /api/v1/policies - status={}, region={}, lob={}, search={}", status, region, lineOfBusiness, search);
+        // note: the raw `search` value is not logged — it may contain a policyholder name (PII)
+        log.debug("GET /api/v1/policies - status={}, region={}, lob={}, hasSearch={}",
+                status, region, lineOfBusiness, search != null && !search.isBlank());
 
         PolicyFilter filter = new PolicyFilter(status, region, lineOfBusiness, effectiveDateFrom, effectiveDateTo, search);
         PageResult<Policy> result = policyService.getPolicies(filter, policyMapper.toPageQuery(pageable));
