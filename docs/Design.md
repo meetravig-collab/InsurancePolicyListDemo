@@ -127,6 +127,8 @@ All environment-specific values are externalized with local defaults:
 | `cache.ttl-seconds` | `CACHE_TTL_SECONDS` | `60` |
 | `cache.max-size` | `CACHE_MAX_SIZE` | `1000` |
 
-### Observability
+### Observability & health
 SLF4J/Logback logging to stdout: `INFO` for write operations, `DEBUG` for reads,
 `WARN` for client errors (404/400), `ERROR` (with stack trace) for data-access failures.
+Spring Boot Actuator exposes `/actuator/health` (with the PostgreSQL component) plus
+`liveness` and `readiness` probes for orchestrator health checks.

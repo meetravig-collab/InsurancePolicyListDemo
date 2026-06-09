@@ -14,6 +14,7 @@
 | `spring-boot-starter-validation` | Request validation (JSR-380, e.g. `@NotEmpty`) |
 | `springdoc-openapi-starter-webmvc-ui` | Swagger UI + runtime OpenAPI docs (`/swagger-ui`, `/v3/api-docs`) |
 | `openapi.yaml` | Contract-first source of truth for the API shape |
+| `spring-boot-starter-actuator` | Health checks — `/actuator/health` + `liveness`/`readiness` probes |
 
 ## Persistence
 | Technology | Purpose |

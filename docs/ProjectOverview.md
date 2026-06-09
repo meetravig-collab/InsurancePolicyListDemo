@@ -26,6 +26,7 @@ and a bulk review-flagging action.
 - **Caching** of hot reads (Caffeine) with TTL + event-based invalidation.
 - **Contract-first API** — [`openapi.yaml`](../src/main/resources/static/openapi.yaml) is the source of truth; Swagger UI at `/swagger-ui/index.html`.
 - **Safe errors** — structured 404 / 400 / 503 responses, never leaking stack traces.
+- **Health checks** — `/actuator/health` with `liveness`/`readiness` probes (DB status included).
 - **Performance** — list & detail p95 < 300ms under 50 concurrent sessions (Gatling-gated).
 
 ## Quick start
